@@ -68,7 +68,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
     <div className="shell">
       <aside className="rail">
         <div className="brand">
-          <h1>Quarry</h1>
+          <h1>Palette</h1>
           <p>HAUS reference library</p>
         </div>
 

@@ -11,7 +11,7 @@ verified on this machine today, in the browser and by test.
   `./data/pg`; hosted Postgres via `DATABASE_URL` in production. One schema, one set of PL/pgSQL
   triggers, `drizzle/`. SQLite is gone.
 - **Google sign-in** restricted to `@hauscustomhomes.com` (Auth.js v5). First person in becomes
-  owner, everyone after is editor. A dev-only sign-in box (`QUARRY_DEV_AUTH=1`) is refused in
+  owner, everyone after is editor. A dev-only sign-in box (`PALETTE_DEV_AUTH=1`) is refused in
   production.
 - **Phones.** Per-device tokens (shown once, stored hashed, revocable) on `/settings`.
   `/api/ingest` takes a bearer token or a session. Android gets the PWA share target (`/share`);
@@ -55,7 +55,7 @@ Bugs found and fixed this round, worth remembering:
 
 ## Open decisions / questions for me
 
-- **Name**: built as Quarry. Still `D-7`.
+- **Name**: built as Palette. Still `D-7`.
 - **Who tags the haus on a phone share?** Today a share lands with no haus and the person adds it
   later from the item page. The Shortcut could ask "which haus?" with a menu, at the cost of a
   third tap. Recommend leaving it at two taps and letting the "Needs me" habit cover it.
@@ -66,15 +66,15 @@ Bugs found and fixed this round, worth remembering:
 
 ## Gotchas
 
-- `.env` holds `QUARRY_DEV_AUTH=1` and nothing secret. It stays gitignored regardless.
+- `.env` holds `PALETTE_DEV_AUTH=1` and nothing secret. It stays gitignored regardless.
 - `data/` and `data-test/` are gitignored. `data/pg` is the PGlite database; deleting it is a
   full reset. The concept has no mirror and no cold copy yet (FR-14, FR-15 unbuilt).
-- The system user `system@quarry.local` owns everything imported by tools without `--as`. Use
+- The system user `system@palette.local` owns everything imported by tools without `--as`. Use
   `--as trevor@hauscustomhomes.com` (after that person has signed in once) so imports land on the
   right "Mine" and "Needs me".
 - `migrate()` runs on every boot and throws if any of the **four** triggers is missing.
-- Tests use `QUARRY_PGLITE=memory` and `./data-test`, set in `vitest.config.ts`.
+- Tests use `PALETTE_PGLITE=memory` and `./data-test`, set in `vitest.config.ts`.
 - The tagger tags the 1600px derivative, not the original.
 - Screenshots of the browser pane time out when the app window is behind another window; use
   `get_page_text`.
-- Port 3200. Palette is on 3100 and 3101.
+- Port 3200. The HausBuch is on 3100 and 3101.

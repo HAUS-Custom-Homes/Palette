@@ -59,7 +59,7 @@ const hash = (token: string) => crypto.createHash("sha256").update(token).digest
 
 export async function createDeviceToken(userId: string, label: string): Promise<{ id: string; token: string }> {
   const d = await db();
-  const token = "qry_" + crypto.randomBytes(24).toString("base64url");
+  const token = "plt_" + crypto.randomBytes(24).toString("base64url");
   const row = await d.one<{ id: string }>(
     `INSERT INTO device_tokens (user_id, token_hash, label) VALUES ($1, $2, $3) RETURNING id`,
     [userId, hash(token), label.trim().slice(0, 60) || "phone"],
@@ -68,7 +68,7 @@ export async function createDeviceToken(userId: string, label: string): Promise<
 }
 
 export async function resolveDeviceToken(token: string): Promise<User | null> {
-  if (!token.startsWith("qry_")) return null;
+  if (!token.startsWith("plt_")) return null;
   const d = await db();
   const row = await d.one<User & { token_id: string }>(
     `SELECT u.id, u.email, u.name, u.role::text AS role, t.id AS token_id

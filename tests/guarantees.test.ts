@@ -81,9 +81,9 @@ describe("people", () => {
 
   it("FR-7 a device token resolves to its person, and stops after revocation", async () => {
     const { id, token } = await createDeviceToken(trevor.id, "Trevor iPhone");
-    expect(token.startsWith("qry_")).toBe(true);
+    expect(token.startsWith("plt_")).toBe(true);
     expect((await resolveDeviceToken(token))?.id).toBe(trevor.id);
-    expect(await resolveDeviceToken("qry_not_a_real_token")).toBeNull();
+    expect(await resolveDeviceToken("plt_not_a_real_token")).toBeNull();
     await revokeDeviceToken(id, trevor.id);
     expect(await resolveDeviceToken(token)).toBeNull();
   });

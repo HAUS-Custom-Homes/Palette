@@ -1,4 +1,4 @@
-# Quarry
+# Palette
 
 The HAUS visual reference library: Next.js 15, Postgres (PGlite in dev, hosted in prod), Auth.js,
 sharp, Anthropic SDK. README.md has the full picture. docs/REF-01-PRD.md is the spec and the
@@ -10,7 +10,7 @@ Read HANDOFF.md first: where work stands, what is next, and what is waiting on T
 ## Commands
     npm install
     npm run setup                      # migrate + seed the taxonomy (PGlite under ./data/pg)
-    npm run dev                        # http://localhost:3200, dev sign-in with QUARRY_DEV_AUTH=1
+    npm run dev                        # http://localhost:3200, dev sign-in with PALETTE_DEV_AUTH=1
     npm run demo                       # synthetic demo images
     npm run import -- <folder> [--as email] [--haus Name] [--recursive]
     npm run clip -- <image-url>
@@ -55,5 +55,5 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
   user-driven, in the user's own browser or phone (REF-01 R-1). Same rule as Buildertrend.
 - `.env` holds credentials. Gitignored, never printed, pasted or committed. Trevor enters every
   production secret himself.
-- Agents and tests work against `./data-test` and `QUARRY_PGLITE=memory`, never `./data`.
-- Port 3200. Palette owns 3100 and 3101.
+- Agents and tests work against `./data-test` and `PALETTE_PGLITE=memory`, never `./data`.
+- Port 3200. The HausBuch owns 3100 and 3101.

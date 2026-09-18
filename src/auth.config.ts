@@ -15,9 +15,9 @@ import Credentials from "next-auth/providers/credentials";
 const isProd = process.env.NODE_ENV === "production";
 const googleId = process.env.AUTH_GOOGLE_ID || null;
 const googleSecret = process.env.AUTH_GOOGLE_SECRET || null;
-const allowedDomain = process.env.QUARRY_ALLOWED_DOMAIN || "hauscustomhomes.com";
-const devAuth = !isProd && process.env.QUARRY_DEV_AUTH === "1";
-const secret = process.env.AUTH_SECRET || (isProd ? undefined : "quarry-development-secret-never-use-in-production");
+const allowedDomain = process.env.PALETTE_ALLOWED_DOMAIN || "hauscustomhomes.com";
+const devAuth = !isProd && process.env.PALETTE_DEV_AUTH === "1";
+const secret = process.env.AUTH_SECRET || (isProd ? undefined : "palette-development-secret-never-use-in-production");
 
 const providers: NextAuthConfig["providers"] = [];
 
@@ -33,7 +33,7 @@ if (googleId && googleSecret) {
 
 if (devAuth) {
   // Development only. Refused in production by the isProd guard above, and by
-  // the absence of this branch when QUARRY_DEV_AUTH is unset.
+  // the absence of this branch when PALETTE_DEV_AUTH is unset.
   providers.push(
     Credentials({
       name: "Dev sign-in (local only)",

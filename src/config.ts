@@ -6,13 +6,13 @@ import path from "node:path";
  *
  *   database   DATABASE_URL set   -> hosted Postgres (Neon, Vercel Postgres, ...)
  *              unset              -> PGlite, real Postgres in-process, on disk
- *   storage    QUARRY_STORE_DRIVER=r2 -> Cloudflare R2 (S3 API)
- *              local              -> filesystem under QUARRY_DATA_DIR
- *   sign-in    AUTH_GOOGLE_ID set -> Google, restricted to QUARRY_ALLOWED_DOMAIN
+ *   storage    PALETTE_STORE_DRIVER=r2 -> Cloudflare R2 (S3 API)
+ *              local              -> filesystem under PALETTE_DATA_DIR
+ *   sign-in    AUTH_GOOGLE_ID set -> Google, restricted to PALETTE_ALLOWED_DOMAIN
  *              unset + dev        -> a dev sign-in, refused in production
  */
 
-const dataDir = path.resolve(process.env.QUARRY_DATA_DIR ?? "./data");
+const dataDir = path.resolve(process.env.PALETTE_DATA_DIR ?? "./data");
 const isProd = process.env.NODE_ENV === "production";
 
 export const config = {
@@ -23,15 +23,15 @@ export const config = {
   db: {
     url: process.env.DATABASE_URL || null,
     /** PGlite data directory. `memory` keeps it in RAM (tests). */
-    pgliteDir: process.env.QUARRY_PGLITE === "memory" ? null : path.join(dataDir, "pg"),
+    pgliteDir: process.env.PALETTE_PGLITE === "memory" ? null : path.join(dataDir, "pg"),
   },
 
-  storeDriver: (process.env.QUARRY_STORE_DRIVER ?? "local") as "local" | "r2",
+  storeDriver: (process.env.PALETTE_STORE_DRIVER ?? "local") as "local" | "r2",
   r2: {
     accountId: process.env.R2_ACCOUNT_ID ?? "",
     accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
     secretAccessKey: process.env.R2_SECRET_ACCESS_KEY ?? "",
-    bucket: process.env.R2_BUCKET ?? "quarry",
+    bucket: process.env.R2_BUCKET ?? "palette",
     /** Seconds a signed asset URL stays valid (NFR-7). */
     signedUrlTtl: 600,
   },
@@ -40,12 +40,12 @@ export const config = {
     googleId: process.env.AUTH_GOOGLE_ID || null,
     googleSecret: process.env.AUTH_GOOGLE_SECRET || null,
     /** Only accounts on this Workspace domain may sign in. */
-    allowedDomain: process.env.QUARRY_ALLOWED_DOMAIN || "hauscustomhomes.com",
+    allowedDomain: process.env.PALETTE_ALLOWED_DOMAIN || "hauscustomhomes.com",
     /** The first person to sign in becomes owner. Everyone after is editor. */
-    devAuth: !isProd && process.env.QUARRY_DEV_AUTH === "1",
+    devAuth: !isProd && process.env.PALETTE_DEV_AUTH === "1",
     secret:
       process.env.AUTH_SECRET ||
-      (isProd ? null : "quarry-development-secret-never-use-in-production"),
+      (isProd ? null : "palette-development-secret-never-use-in-production"),
   },
 
   /** Shared secret Vercel Cron sends; see vercel.json. */
@@ -54,7 +54,7 @@ export const config = {
   ai: {
     apiKey: process.env.ANTHROPIC_API_KEY || null,
     /** REF-01 default. Do not downgrade without passing the FR-18 eval gate. */
-    model: process.env.QUARRY_TAG_MODEL ?? "claude-opus-5",
+    model: process.env.PALETTE_TAG_MODEL ?? "claude-opus-5",
   },
 
   /** FR-12 derivative sizes. */
@@ -74,4 +74,4 @@ export const TAXONOMY_VERSION = 2;
 export const PROMPT_VERSION = "tag-v1";
 
 /** The user tools run as when nobody is signed in (imports, clips, cron). */
-export const SYSTEM_USER_EMAIL = "system@quarry.local";
+export const SYSTEM_USER_EMAIL = "system@palette.local";

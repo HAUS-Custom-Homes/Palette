@@ -2,14 +2,14 @@ import type { MetadataRoute } from "next";
 
 /**
  * Installable web app. "Add to Home Screen" on iPhone and Android, an icon,
- * no browser chrome. On Android, share_target also puts Quarry in the native
+ * no browser chrome. On Android, share_target also puts Palette in the native
  * share sheet; iOS does not support that, so the iPhone gets a Shortcut
  * (docs/SHORTCUT.md) that does the same thing through /api/ingest.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Quarry",
-    short_name: "Quarry",
+    name: "Palette",
+    short_name: "Palette",
     description: "HAUS visual reference library",
     start_url: "/",
     display: "standalone",

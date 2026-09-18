@@ -3,7 +3,7 @@
  *
  * This file seeds the database. Once seeded, the taxonomy lives in
  * taxonomy_facets and taxonomy_terms and is edited there, not here. The
- * designer role (qry-interiors) owns the vocabulary and holds a veto on every
+ * designer role (plt-interiors) owns the vocabulary and holds a veto on every
  * term: if the word is wrong, it does not ship.
  *
  * Two kinds of facet:

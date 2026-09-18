@@ -1,5 +1,5 @@
 -- Applied by src/db/migrate.ts after 0000_init.sql, deliberately as a separate
--- file. Palette precedent: without this file a database has no enforcement
+-- file. The HausBuch precedent: without this file a database has no enforcement
 -- gate, only application-level good intentions. migrate() counts these and
 -- refuses to serve if any is missing.
 
@@ -19,7 +19,7 @@ BEGIN
     RETURN NEW;
   ELSIF TG_OP = 'DELETE' THEN
     IF OLD.source = 'human'
-       AND coalesce(current_setting('quarry.hard_delete', true), '') <> '1' THEN
+       AND coalesce(current_setting('palette.hard_delete', true), '') <> '1' THEN
       RAISE EXCEPTION 'FR-19: an AI run may not delete a human tag';
     END IF;
     RETURN OLD;

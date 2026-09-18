@@ -281,7 +281,7 @@ export async function stats(ownerId?: string) {
          WHERE j.state = 'quarantined' AND i.created_by = $2)::text AS "myQuarantined",
        (SELECT count(*) FROM proposed_terms WHERE status = 'pending')::text AS proposed,
        (SELECT count(*) FROM items WHERE variant_of IS NOT NULL)::text AS variants,
-       (SELECT count(*) FROM users WHERE email <> 'system@quarry.local')::text AS people`,
+       (SELECT count(*) FROM users WHERE email <> 'system@palette.local')::text AS people`,
     [config.reviewConfidenceThreshold, ownerId ?? "00000000-0000-0000-0000-000000000000"],
   );
   const n = (k: string) => Number(row?.[k] ?? 0);

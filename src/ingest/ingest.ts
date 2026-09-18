@@ -174,7 +174,7 @@ export async function ingestUrl(
   extra: { termIds?: string[]; note?: string } = {},
 ): Promise<IngestResult> {
   const res = await fetch(url, {
-    headers: { "user-agent": "Quarry/0.2 (HAUS private reference library)", accept: "image/*" },
+    headers: { "user-agent": "Palette/0.2 (HAUS private reference library)", accept: "image/*" },
     redirect: "follow",
   });
   if (!res.ok) throw new Error(`fetch failed: ${res.status} ${res.statusText}`);

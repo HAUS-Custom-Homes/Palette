@@ -1,4 +1,4 @@
-# Quarry
+# Palette
 
 The HAUS visual reference library. **One item per image, HAUS owns the bytes, and every person
 owns their own captures.**
@@ -7,11 +7,11 @@ The problem it replaces: design inspiration lives in Instagram saves, Pinterest 
 screenshots and folders on a share. None of it is searchable together, none of it is described in
 HAUS's own words, and none of it is safe, because a save is a pointer to someone else's server.
 
-Quarry captures the actual file, stores it under its own SHA-256 forever, describes it against a
+Palette captures the actual file, stores it under its own SHA-256 forever, describes it against a
 controlled HAUS vocabulary, and makes it findable in a second, by the whole team, from a phone.
 
-**Sibling system:** [Palette](../Palette) (`SEL-*`) is the selections register. It records what was
-*chosen*. Quarry records what it was chosen *from*.
+**Sibling system:** [The HausBuch](../HausBuch) (`SEL-*`) is the selections register. It records what was
+*chosen*. Palette records what it was chosen *from*.
 
 ---
 
@@ -29,7 +29,7 @@ controlled HAUS vocabulary, and makes it findable in a second, by the whole team
 
 ```bash
 npm install
-cp .env.example .env               # QUARRY_DEV_AUTH=1 gives a local sign-in box
+cp .env.example .env               # PALETTE_DEV_AUTH=1 gives a local sign-in box
 npm run setup                      # migrate + seed: 8 facets, 129 terms
 npm run demo && npm run import -- ./demo-images --haus Hurst
 npm run tag
@@ -47,7 +47,7 @@ survive that, by design and by test.
 
 ## How the team uses it
 
-- **Capture.** Share, then Quarry. Two taps from any app on a phone; drop or paste on desktop.
+- **Capture.** Share, then Palette. Two taps from any app on a phone; drop or paste on desktop.
   The image is stored by hash before anything else happens, and tagged within a minute.
 - **Find.** One search box plus a facet rail: Haus, image type, space, element, material, style,
   color. Counts respond to the active filter. Any search is a URL you can send.

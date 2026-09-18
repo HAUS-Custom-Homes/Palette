@@ -1,4 +1,4 @@
-# QUARRY — HAUS Visual Reference Library
+# PALETTE — HAUS Visual Reference Library
 ## Product Requirements Document
 
 | | |
@@ -8,7 +8,7 @@
 | Date | 2026-09-17 |
 | Author | Claude Opus 5, acting as Principal PM / Lead AI Solutions Architect |
 | Owner | Trevor, HAUS Custom Homes |
-| Sibling system | Palette (`SEL-*`), the HAUS selections register |
+| Sibling system | The HausBuch (`SEL-*`), the HAUS selections register |
 | Product name | **Placeholder.** Swap the moniker and the `REF-` doc prefix once the name is chosen. |
 
 ---
@@ -29,7 +29,7 @@ HAUS makes design decisions from visual reference, and that reference is scatter
 
 ### 1.2 The product, in one paragraph
 
-Quarry is a private, self-owned visual reference library. Every image is captured as an actual file into content-addressed permanent storage, described against a controlled HAUS taxonomy by an AI tagging pass with human override, and retrievable in under a second by image type, space, element, material, style, and color, or by natural language, or by visual similarity to another image. Sources feed in continuously through a browser clipper, a mobile share sheet, a Pinterest connector, and direct upload. The source can disappear; the library does not.
+Palette is a private, self-owned visual reference library. Every image is captured as an actual file into content-addressed permanent storage, described against a controlled HAUS taxonomy by an AI tagging pass with human override, and retrievable in under a second by image type, space, element, material, style, and color, or by natural language, or by visual similarity to another image. Sources feed in continuously through a browser clipper, a mobile share sheet, a Pinterest connector, and direct upload. The source can disappear; the library does not.
 
 ### 1.3 Vision
 
@@ -39,17 +39,17 @@ Three horizons:
 
 1. **Permanence (v1).** The bytes are HAUS's. Nothing in the library depends on a third party staying online.
 2. **Retrieval (v1).** Any image in the library is findable in seconds, by the words a designer actually uses.
-3. **Leverage (v2+).** The library stops being an archive and becomes an input. Inspiration attaches to a Palette selection slot, flows into the Interior Design Package, and shows up in client presentations. Palette records what was *chosen*; Quarry records what it was chosen *from*.
+3. **Leverage (v2+).** The library stops being an archive and becomes an input. Inspiration attaches to a The HausBuch selection slot, flows into the Interior Design Package, and shows up in client presentations. The HausBuch records what was *chosen*; Palette records what it was chosen *from*.
 
-### 1.4 Why this pairs with Palette
+### 1.4 Why this pairs with The HausBuch
 
-| | Palette (`SEL-*`) | Quarry (`REF-*`) |
+| | The HausBuch (`SEL-*`) | Palette (`REF-*`) |
 |---|---|---|
 | Question it answers | What did we decide? | What could we decide from? |
 | Unit | One row per decision | One item per image |
 | Scope | Per haus | Across all hauses, and pre-haus |
 | Lifecycle | Closes at issue | Never closes, appreciates |
-| Relationship | Consumes Quarry | Feeds Palette |
+| Relationship | Consumes Palette | Feeds The HausBuch |
 
 They share a stack, an agent-loop pattern, and eventually a foreign key (`FR-38`). They do not share a database in v1 (`D-5`).
 
@@ -66,8 +66,8 @@ They share a stack, an agent-loop pattern, and eventually a foreign key (`FR-38`
 
 - Not a public website, not a portfolio, not a shared social product.
 - Not a DAM for HAUS project photography, marketing assets, or contracts. Reference only.
-- Not a Palette replacement. No pricing, no quantities, no purchasing.
-- No editing of images. Quarry stores and describes, it does not retouch.
+- Not a The HausBuch replacement. No pricing, no quantities, no purchasing.
+- No editing of images. Palette stores and describes, it does not retouch.
 - No multi-tenant SaaS. Single organization, small team.
 - No republication of third-party images to the public. See `R-6`.
 
@@ -81,7 +81,7 @@ They share a stack, an agent-loop pattern, and eventually a foreign key (`FR-38`
 
 **P2. The Interior Designer (StudioHaus).** The heaviest searcher. Thinks in rooms, materials and styles, not in filenames. Needs to assemble a set of eight images for a primary bath conversation in under five minutes. Owns the truth of the taxonomy vocabulary: if the term is wrong, the library is wrong.
 
-**P3. The Selections Coordinator.** Lives in Palette. Comes to Quarry to answer "show me what the client liked for the backsplash" and to attach a reference to a selection slot. Wants the two systems to feel like one.
+**P3. The Selections Coordinator.** Lives in The HausBuch. Comes to Palette to answer "show me what the client liked for the backsplash" and to attach a reference to a selection slot. Wants the two systems to feel like one.
 
 **P4. The Client (read-only, v3).** Sees a curated board, never the library. Judges HAUS by how the board looks. Never logs in to anything complicated.
 
@@ -90,7 +90,7 @@ They share a stack, an agent-loop pattern, and eventually a foreign key (`FR-38`
 ### 2.2 Core journeys
 
 **J1. Capture from Instagram on a phone (P1, the highest-frequency journey).**
-Trevor sees a kitchen on Instagram. He taps share, taps Quarry in the share sheet, and returns to scrolling. Elapsed time under three seconds, no typing, no waiting. In the background Quarry resolves the post, downloads the image at the largest resolution available, stores it, tags it, and it appears in the grid. If he is offline, the capture queues and fires when he reconnects.
+Trevor sees a kitchen on Instagram. He taps share, taps Palette in the share sheet, and returns to scrolling. Elapsed time under three seconds, no typing, no waiting. In the background Palette resolves the post, downloads the image at the largest resolution available, stores it, tags it, and it appears in the grid. If he is offline, the capture queues and fires when he reconnects.
 Requirements: `FR-6`, `FR-7`, `FR-8`, `FR-20`, `NFR-3`.
 
 **J2. Capture from the web on a desktop (P1, P2).**
@@ -98,7 +98,7 @@ A browser extension button on any page. One click captures the hovered or larges
 Requirements: `FR-4`, `FR-5`, `FR-20`.
 
 **J3. Bulk backfill (P1, once, at launch).**
-Trevor points Quarry at a Pinterest account. Every board and every pin is imported with board names preserved as provisional collections. He uploads a folder of 4,000 screenshots from a phone backup and they are ingested, deduplicated, and tagged. For Instagram, he requests Meta's official data export and hands Quarry the archive, which becomes a work queue (`R-1`).
+Trevor points Palette at a Pinterest account. Every board and every pin is imported with board names preserved as provisional collections. He uploads a folder of 4,000 screenshots from a phone backup and they are ingested, deduplicated, and tagged. For Instagram, he requests Meta's official data export and hands Palette the archive, which becomes a work queue (`R-1`).
 Requirements: `FR-1`, `FR-2`, `FR-3`, `FR-21`, `FR-22`.
 
 **J4. Find it right now (P2, in front of a client).**
@@ -110,7 +110,7 @@ The model called a limewash wall "plaster". She corrects it. The correction is s
 Requirements: `FR-16`, `FR-17`, `FR-19`.
 
 **J6. Attach inspiration to a decision (P3, v4).**
-In Palette, on the primary bath floor tile slot, the coordinator clicks "add reference", searches Quarry inline, and attaches two images. They print in the client selections book next to the chosen product.
+In The HausBuch, on the primary bath floor tile slot, the coordinator clicks "add reference", searches Palette inline, and attaches two images. They print in the client selections book next to the chosen product.
 Requirements: `FR-38`, `FR-39`.
 
 **J7. Prove the library is safe (P5, quarterly).**
@@ -125,7 +125,7 @@ Phase tags: **`[P0]`** foundations, **`[P1]`** MVP, **`[P2]`**, **`[P3]`**, **`[
 
 ### 3.1 Ingestion pipeline
 
-The ingestion decision that governs everything else: **each source gets the most durable lawful path available, and no path uses HAUS's own logged-in credentials from a server.** This mirrors the Palette precedent on Buildertrend (never automate a vendor UI with a browser, it breaks terms and risks the account of record). The same discipline applies here and it shapes the Instagram answer specifically.
+The ingestion decision that governs everything else: **each source gets the most durable lawful path available, and no path uses HAUS's own logged-in credentials from a server.** This mirrors the The HausBuch precedent on Buildertrend (never automate a vendor UI with a browser, it breaks terms and risks the account of record). The same discipline applies here and it shapes the Instagram answer specifically.
 
 | Source | Path chosen | Why not the alternative |
 |---|---|---|
@@ -164,7 +164,7 @@ The ingestion decision that governs everything else: **each source gets the most
 
 **`FR-13` `[P0]` Primary object store: Cloudflare R2.** S3-compatible, no egress fees (the library is read-heavy and serves images to browsers, which is exactly the shape that makes egress-billed stores expensive), reachable from anywhere. Object versioning on. Access via signed URLs with short TTL, never a public bucket.
 
-**`FR-14` `[P0]` Local mirror on the HAUS fileserver.** Nightly `rclone sync` of `originals/` to `/srv/share/quarry/originals` on LXC 101. This is the "HAUS owns the bytes" guarantee in physical form. A read-only path, never written to by the app.
+**`FR-14` `[P0]` Local mirror on the HAUS fileserver.** Nightly `rclone sync` of `originals/` to `/srv/share/palette/originals` on LXC 101. This is the "HAUS owns the bytes" guarantee in physical form. A read-only path, never written to by the app.
 
 > **Rationale for R2 as primary rather than the fileserver as primary.** The fileserver is LAN-only today, and reaching it off-network is a known open item in the `haus-fileserver` handoff. A library Trevor cannot open from a job site is not the product described in `J4`. R2 primary plus local mirror gives availability from anywhere and physical ownership at the same time. If remote access to the LAN is solved first, revisit under `D-2`.
 
@@ -241,15 +241,15 @@ This is the part that makes or breaks `G4`. The core architectural claim: **free
 
 **`FR-34` `[P1]` Boards.** Manual collections, an item may be in many, drag to reorder, cover image, description. Imported Pinterest board names land here as provisional boards.
 
-**`FR-35` `[P3]` Client share links.** A board publishes to a read-only, unguessable, expiring URL, branded to MK-01, with optional per-image "like" feedback that writes back into Quarry. Gated on `D-3` and `R-6`.
+**`FR-35` `[P3]` Client share links.** A board publishes to a read-only, unguessable, expiring URL, branded to MK-01, with optional per-image "like" feedback that writes back into Palette. Gated on `D-3` and `R-6`.
 
 **`FR-36` `[P1]` Bulk operations.** Multi-select in the grid, then bulk add to board, bulk tag, bulk delete, bulk re-tag.
 
 **`FR-37` `[P2]` Item notes and ratings.** Free-text note and a simple star or "hero" flag per item, both fully searchable.
 
-**`FR-38` `[P4]` Palette integration, outbound.** A Quarry item can be attached to a Palette selection slot. Stored as a link record with the slot id, resolved through a small API on the Palette side rather than a shared database.
+**`FR-38` `[P4]` The HausBuch integration, outbound.** A Palette item can be attached to a The HausBuch selection slot. Stored as a link record with the slot id, resolved through a small API on the The HausBuch side rather than a shared database.
 
-**`FR-39` `[P4]` Palette integration, inbound.** From inside Palette, an inline Quarry search panel for attaching references without leaving the register.
+**`FR-39` `[P4]` The HausBuch integration, inbound.** From inside The HausBuch, an inline Palette search panel for attaching references without leaving the register.
 
 **`FR-45` `[P5]` Region tagging.** Tag a rectangle within an image ("this cabinet pull"), so a single kitchen photo can carry element-level references.
 
@@ -265,13 +265,13 @@ This is the part that makes or breaks `G4`. The core architectural claim: **free
 
 **`NFR-3` Ingest latency.** Clip to "saved" acknowledgment under 1 second. Clip to visible in grid under 30 seconds at p95. Tagging is asynchronous and may take minutes; the item is usable before it is tagged.
 
-**`NFR-4` Throughput.** Backfill sustains 1,000 items per hour end to end, constrained in practice by Pinterest's trial rate limit rather than by Quarry.
+**`NFR-4` Throughput.** Backfill sustains 1,000 items per hour end to end, constrained in practice by Pinterest's trial rate limit rather than by Palette.
 
 **`NFR-5` Availability.** Best-effort, single region. This is an internal tool; an hour of downtime is an inconvenience, not an incident. Data durability is the hard requirement, not uptime.
 
 **`NFR-6` Durability.** Three copies, two storage classes, one offsite (`FR-13` through `FR-15`). Target: zero unrecoverable item loss, ever. This is the product's reason to exist.
 
-**`NFR-7` Security.** Session auth, roles `owner`, `editor`, `viewer`. All object access through short-TTL signed URLs; no public bucket, ever. Secrets in `.env`, gitignored, never printed or committed (house rule, carried from Palette). TLS everywhere. Rate limiting on the ingest endpoint. Device tokens for mobile capture are scoped to ingest only and individually revocable.
+**`NFR-7` Security.** Session auth, roles `owner`, `editor`, `viewer`. All object access through short-TTL signed URLs; no public bucket, ever. Secrets in `.env`, gitignored, never printed or committed (house rule, carried from The HausBuch). TLS everywhere. Rate limiting on the ingest endpoint. Device tokens for mobile capture are scoped to ingest only and individually revocable.
 
 **`NFR-8` Integrity.** Full-library hash verification at least monthly, alert on any mismatch (`FR-40`).
 
@@ -295,9 +295,9 @@ This is the part that makes or breaks `G4`. The core architectural claim: **free
 
 | Layer | Choice | Reason |
 |---|---|---|
-| App | Next.js 15 App Router, TypeScript | Matches Palette. Shared conventions, shared agent patterns, one thing for HAUS to maintain |
+| App | Next.js 15 App Router, TypeScript | Matches The HausBuch. Shared conventions, shared agent patterns, one thing for HAUS to maintain |
 | DB | Postgres 17 | Relational model, full-text search, and pgvector in one engine. No separate search service to keep in sync |
-| ORM | Drizzle | Matches Palette. Typed schema, migrations as code |
+| ORM | Drizzle | Matches The HausBuch. Typed schema, migrations as code |
 | Vector | pgvector, HNSW index | Avoids a second datastore at this scale |
 | Queue | pg-boss (Postgres-backed job queue) | One fewer moving part than Redis. Jobs are transactional with the data |
 | Images | sharp | Derivatives, metadata, HEIC transcode |
@@ -467,7 +467,7 @@ CREATE TABLE integrity_checks (
   ran_at      timestamptz NOT NULL DEFAULT now()
 );
 
-CREATE TABLE audit_events (                -- Palette precedent
+CREATE TABLE audit_events (                -- The HausBuch precedent
   id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   actor_id   uuid REFERENCES users(id),
   entity     text NOT NULL,
@@ -528,11 +528,11 @@ GET    /api/admin/health           job counts, integrity, cost (NFR-11, NFR-12)
 
 ## 6. Agentic loop execution blueprint
 
-This section is the operating manual for the build. It follows the pattern already proven on Palette (`SEL-02 §11`) and tightens it where this product differs: the AI tagging layer needs an evaluation gate that a code review cannot substitute for, and the permanence pillar needs an adversary whose only job is to disbelieve the backup.
+This section is the operating manual for the build. It follows the pattern already proven on The HausBuch (`SEL-02 §11`) and tightens it where this product differs: the AI tagging layer needs an evaluation gate that a code review cannot substitute for, and the permanence pillar needs an adversary whose only job is to disbelieve the backup.
 
 ### 6.1 Orchestrator
 
-I act as orchestrator (`qry-pm`). I own sequencing, architecture decisions, cross-module integration, the definition of done, and the decision to accept or re-queue a round. I do not write feature code. When two agents disagree, I decide and record why.
+I act as orchestrator (`plt-pm`). I own sequencing, architecture decisions, cross-module integration, the definition of done, and the decision to accept or re-queue a round. I do not write feature code. When two agents disagree, I decide and record why.
 
 ### 6.2 Agent roster
 
@@ -540,30 +540,30 @@ Each agent gets a role file in `.claude/agents/`. Roles are written as **standin
 
 | Agent | Role | Owns | Veto |
 |---|---|---|---|
-| `qry-pm` | Orchestrator (me) | Sequencing, architecture, integration, acceptance | Final |
-| `qry-platform` | Senior engineer | Schema, migrations, storage, CAS, derivatives, jobs, search engine, API | Anything that risks data integrity |
-| `qry-ingest` | Senior engineer | Source adapters, extension, mobile capture, dedupe, backfill CLIs | Anything that violates a source's terms of service |
-| `qry-ai` | ML engineer | Tagger, Embedder, taxonomy-to-schema generation, batch runner, eval harness, cost | Shipping a facet that has not passed `FR-18` |
-| `qry-frontend` | Senior engineer | Grid, search UI, quicklook, boards, review queue, admin | Anything that breaks keyboard flow or `NFR-1` |
-| `qry-interiors` | Interior designer | Taxonomy vocabulary, facet structure, what a designer actually calls things, golden-set labeling | Any term in the taxonomy. If the word is wrong, it does not ship |
-| `qry-designer` | Graphic designer | MK-01 brand compliance on every surface, client share board, grid typography and rhythm | Any client-facing surface |
-| `qry-qc-designer` | QC, searcher's eyes | Walks the product as P2 with a real question and a client waiting. Is it fast, is it right, is it beautiful | Round acceptance |
-| `qry-qc-archivist` | QC, permanence's eyes | Disbelieves the storage claims. Kills the container, deletes the bucket in staging, demands a restore. Can HAUS open this file in 2036 | Round acceptance |
-| `qry-verify` | Adversarial verifier | Attempts to refute every completion claim. Runs the code, reads the numbers, reproduces the failure modes the PRD says are impossible | Round acceptance |
+| `plt-pm` | Orchestrator (me) | Sequencing, architecture, integration, acceptance | Final |
+| `plt-platform` | Senior engineer | Schema, migrations, storage, CAS, derivatives, jobs, search engine, API | Anything that risks data integrity |
+| `plt-ingest` | Senior engineer | Source adapters, extension, mobile capture, dedupe, backfill CLIs | Anything that violates a source's terms of service |
+| `plt-ai` | ML engineer | Tagger, Embedder, taxonomy-to-schema generation, batch runner, eval harness, cost | Shipping a facet that has not passed `FR-18` |
+| `plt-frontend` | Senior engineer | Grid, search UI, quicklook, boards, review queue, admin | Anything that breaks keyboard flow or `NFR-1` |
+| `plt-interiors` | Interior designer | Taxonomy vocabulary, facet structure, what a designer actually calls things, golden-set labeling | Any term in the taxonomy. If the word is wrong, it does not ship |
+| `plt-designer` | Graphic designer | MK-01 brand compliance on every surface, client share board, grid typography and rhythm | Any client-facing surface |
+| `plt-qc-designer` | QC, searcher's eyes | Walks the product as P2 with a real question and a client waiting. Is it fast, is it right, is it beautiful | Round acceptance |
+| `plt-qc-archivist` | QC, permanence's eyes | Disbelieves the storage claims. Kills the container, deletes the bucket in staging, demands a restore. Can HAUS open this file in 2036 | Round acceptance |
+| `plt-verify` | Adversarial verifier | Attempts to refute every completion claim. Runs the code, reads the numbers, reproduces the failure modes the PRD says are impossible | Round acceptance |
 
-**The productive tension, stated on purpose.** `qry-qc-designer` wants speed, density, and instant everything. `qry-qc-archivist` wants verification, redundancy, and immutability, all of which cost time and money. `qry-ingest` wants maximum coverage of sources; its own terms-of-service veto pulls against that. These conflicts are the point. A round that produced no disagreement probably had one agent asleep.
+**The productive tension, stated on purpose.** `plt-qc-designer` wants speed, density, and instant everything. `plt-qc-archivist` wants verification, redundancy, and immutability, all of which cost time and money. `plt-ingest` wants maximum coverage of sources; its own terms-of-service veto pulls against that. These conflicts are the point. A round that produced no disagreement probably had one agent asleep.
 
 ### 6.3 Round protocol
 
 Work proceeds in **rounds**. A round is one coherent slice, usually one phase item or a small group, and never more than one week of agent work. Every round produces files on disk, not chat.
 
 ```
-docs/rounds/ROUND-<n>-BRIEF.md      written by qry-pm before work starts
+docs/rounds/ROUND-<n>-BRIEF.md      written by plt-pm before work starts
 docs/rounds/ROUND-<n>-REPORT.md     written by each build agent as it finishes
-docs/rounds/ROUND-<n>-VERIFY.md     written by qry-verify
+docs/rounds/ROUND-<n>-VERIFY.md     written by plt-verify
 docs/rounds/ROUND-<n>-QC.md         written by both QC agents
-docs/rounds/ROUND-<n>-CLOSE.md      written by qry-pm; accepted or re-queued
-CHANGELOG.md                        appended every round (Palette practice)
+docs/rounds/ROUND-<n>-CLOSE.md      written by plt-pm; accepted or re-queued
+CHANGELOG.md                        appended every round (The HausBuch practice)
 HANDOFF.md                          updated every round (cross-machine rule)
 ```
 
@@ -593,7 +593,7 @@ FR-x, FR-y, NFR-z          <- the only authority. Nothing outside this list ship
 ### 6.4 The loop
 
 ```
-   qry-pm writes BRIEF
+   plt-pm writes BRIEF
         |
         v
    build agents work in parallel, one module each
@@ -602,27 +602,27 @@ FR-x, FR-y, NFR-z          <- the only authority. Nothing outside this list ship
    each writes REPORT with: what shipped, FR coverage, what it could not do
         |
         v
-   qry-verify attempts refutation  ------> refuted? back to the agent, same round
+   plt-verify attempts refutation  ------> refuted? back to the agent, same round
         |  (runs the code; does not
         |   accept a claim it did not
         |   reproduce itself)
         v
-   qry-qc-designer  and  qry-qc-archivist  review in parallel, from their own vantage
+   plt-qc-designer  and  plt-qc-archivist  review in parallel, from their own vantage
         |
         v
-   qry-pm: accept, or re-queue with a named reason
+   plt-pm: accept, or re-queue with a named reason
         |
         v
    CHANGELOG + HANDOFF updated, round closed
 ```
 
-**Rules that make the loop actually work**, most of them learned on Palette:
+**Rules that make the loop actually work**, most of them learned on The HausBuch:
 
-1. **The verifier runs the code.** `qry-verify` never accepts a claim from a report. It executes, reads output, and checks numbers against the requirement. Its default posture is that the claim is wrong.
+1. **The verifier runs the code.** `plt-verify` never accepts a claim from a report. It executes, reads output, and checks numbers against the requirement. Its default posture is that the claim is wrong.
 2. **A phase does not close until both QC agents and the verifier sign.** Any one of them can hold a phase open.
-3. **Agents work against the test database only.** `.env.test`, a separate database, a separate bucket prefix. Never the live data. Carried directly from the Palette rule.
-4. **No agent edits a `.ts`, `.tsx` or `.sql` file through a shell heredoc or `sed`.** Editor tools only. Palette lost time to a heredoc turning a regex `\b` into a literal backspace byte.
-5. **Interfaces are frozen at the brief.** If `qry-platform` needs to change `ObjectStore` mid-round, it stops and raises it to `qry-pm`; it does not change it and tell people afterward.
+3. **Agents work against the test database only.** `.env.test`, a separate database, a separate bucket prefix. Never the live data. Carried directly from the The HausBuch rule.
+4. **No agent edits a `.ts`, `.tsx` or `.sql` file through a shell heredoc or `sed`.** Editor tools only. The HausBuch lost time to a heredoc turning a regex `\b` into a literal backspace byte.
+5. **Interfaces are frozen at the brief.** If `plt-platform` needs to change `ObjectStore` mid-round, it stops and raises it to `plt-pm`; it does not change it and tell people afterward.
 6. **One requirement, one test.** Every FR in scope gets at least one test that fails if the requirement regresses. The test names the FR id.
 7. **Cost is reported, not discovered.** Any round that calls a paid API reports actual dollars spent in its REPORT.
 8. **Secrets never enter a diff, a log, or a report.**
@@ -631,13 +631,13 @@ FR-x, FR-y, NFR-z          <- the only authority. Nothing outside this list ship
 
 Ordinary test suites do not catch the two things most likely to go wrong here, so each gets a dedicated gate.
 
-**Gate A, the tagging eval (`FR-18`), owned by `qry-ai`, labeled by `qry-interiors`.**
-200 hand-labeled images. Precision and recall per facet, scored on every prompt, taxonomy, or model change. Thresholds in `FR-18`. A facet below threshold ships in "suggested" mode, not applied mode. Scores are recorded per run in `docs/evals/` so the trend is visible. `qry-verify` re-runs the eval itself rather than reading the number from a report.
+**Gate A, the tagging eval (`FR-18`), owned by `plt-ai`, labeled by `plt-interiors`.**
+200 hand-labeled images. Precision and recall per facet, scored on every prompt, taxonomy, or model change. Thresholds in `FR-18`. A facet below threshold ships in "suggested" mode, not applied mode. Scores are recorded per run in `docs/evals/` so the trend is visible. `plt-verify` re-runs the eval itself rather than reading the number from a report.
 
-**Gate B, the permanence drill (`FR-41`), owned by `qry-qc-archivist`.**
+**Gate B, the permanence drill (`FR-41`), owned by `plt-qc-archivist`.**
 Before any phase containing storage work closes, in the staging environment: delete the primary bucket's copy of a random sample, run the restore procedure, verify hashes, open the files. Then delete the database and restore from `pg_dump`, and verify the item still resolves to the right bytes. Written up with the actual commands and the actual output. **If the restore has not been performed, the storage requirements are unmet regardless of what the code looks like.**
 
-**Gate C, adoption (`G2`), owned by `qry-qc-designer`.**
+**Gate C, adoption (`G2`), owned by `plt-qc-designer`.**
 Time the capture path with a stopwatch on a real phone against a real Instagram post. If it is slower than Instagram's own save button, the round does not close. This is `R-7` made testable.
 
 ### 6.6 Phasing
@@ -648,7 +648,7 @@ Time the capture path with a stopwatch on a real phone against a real Instagram 
 | **P1** | MVP | Taxonomy engine, Claude tagger + eval gate, embeddings, hybrid search, facet rail, quicklook, boards, browser clipper, Pinterest connector, review queue, integrity scrub | 5,000 images in, Gate A passed on all facets, Gate B passed, Gate C passed, `J4` demonstrated live |
 | **P2** | Reach | Mobile capture (iOS + Android), offline queue, Instagram export backfill, near-dup clustering, OCR, compare tray, more-like-this, export-everything | Trevor captures from his phone for two weeks without touching a desktop |
 | **P3** | Polish and share | Saved searches, color extraction, client share links, email ingest, watched folder, brand pass | A client board sent and used in a real meeting |
-| **P4** | Palette bridge | `FR-38`, `FR-39`, references in the selections book | A reference attached to a real selection slot on a real haus |
+| **P4** | The HausBuch bridge | `FR-38`, `FR-39`, references in the selections book | A reference attached to a real selection slot on a real haus |
 | **P5** | Advanced | Region tagging, auto-board suggestions, re-tag under a newer model as a routine operation | Full library re-tagged with human work provably intact |
 
 **P0 and P1 are the commitment.** P2 onward re-plans after P1 ships, because what P1 teaches will change it.
@@ -658,7 +658,7 @@ Time the capture path with a stopwatch on a real phone against a real Instagram 
 ## 7. Roadblocks
 
 **`R-1` Instagram has no lawful bulk path. (High. The biggest threat to Pillar 1.)**
-Meta retired the Basic Display API in December 2024, and the current Instagram API covers business and creator accounts only. Saved posts and collections are private by design and are not exposed to any third-party application. So there is no API that will hand Quarry a personal account's saves. Unofficial scrapers (instaloader, gallery-dl) do work, and they also breach Instagram's terms and put the account at risk of restriction. HAUS has already set the precedent on exactly this question with Buildertrend: no browser automation against a vendor's UI. Applying the same rule here, the plan is: **user-driven clipping in the user's own browser and phone as the primary path (`FR-4`, `FR-6`, `FR-7`), plus Meta's official "Download Your Information" export as the backfill seed (`FR-2`).** Consequence to accept openly: Instagram backfill is partly manual, and there is no one-click import of years of saves. Mitigation: make clipping so fast that going forward it is not a chore, and use the DYI export to produce a finite, checkable worklist rather than a vague sense of loss. Decision `D-1` confirms this posture.
+Meta retired the Basic Display API in December 2024, and the current Instagram API covers business and creator accounts only. Saved posts and collections are private by design and are not exposed to any third-party application. So there is no API that will hand Palette a personal account's saves. Unofficial scrapers (instaloader, gallery-dl) do work, and they also breach Instagram's terms and put the account at risk of restriction. HAUS has already set the precedent on exactly this question with Buildertrend: no browser automation against a vendor's UI. Applying the same rule here, the plan is: **user-driven clipping in the user's own browser and phone as the primary path (`FR-4`, `FR-6`, `FR-7`), plus Meta's official "Download Your Information" export as the backfill seed (`FR-2`).** Consequence to accept openly: Instagram backfill is partly manual, and there is no one-click import of years of saves. Mitigation: make clipping so fast that going forward it is not a chore, and use the DYI export to produce a finite, checkable worklist rather than a vague sense of loss. Decision `D-1` confirms this posture.
 
 **`R-2` Pinterest trial rate limits gate the backfill. (Medium, time only.)**
 Trial access is capped at roughly 1,000 requests per day; standard access is far higher but requires approval. A large board set could take several days to backfill on trial. Mitigation: resumable, rate-aware backfill; apply for standard access at project start so approval runs in parallel with P0.
@@ -676,9 +676,9 @@ If everyone can invent a term, within a year there are five words for the same t
 Collecting third-party images into a private internal reference library is ordinary professional practice and is what every designer's Pinterest already is. The posture changes when images are shown to clients (`FR-35`). Rule for v1: every client-facing image carries attribution and a link to its source, and the share board is unguessable and expiring rather than public. If HAUS ever wants public publication, that is a different conversation with different rules.
 
 **`R-7` Adoption. (The one that actually kills projects.)**
-If saving to Quarry is slower than tapping Instagram's bookmark icon, Trevor will tap the bookmark icon, and the library will stop growing the week after launch. Mitigations are structural, not aspirational: `FR-5` (acknowledge before processing), `FR-7` (native share sheet, not a web page), `FR-8` (offline queue), and Gate C (`§6.5`), which makes the stopwatch a release blocker.
+If saving to Palette is slower than tapping Instagram's bookmark icon, Trevor will tap the bookmark icon, and the library will stop growing the week after launch. Mitigations are structural, not aspirational: `FR-5` (acknowledge before processing), `FR-7` (native share sheet, not a web page), `FR-8` (offline queue), and Gate C (`§6.5`), which makes the stopwatch a release blocker.
 
-**`R-8` Single-user bus factor.** Nearly all value accrues to one person's habit. Mitigation: `FR-42` export-everything, so the library is portable and legible even if Quarry itself is retired.
+**`R-8` Single-user bus factor.** Nearly all value accrues to one person's habit. Mitigation: `FR-42` export-everything, so the library is portable and legible even if Palette itself is retired.
 
 ---
 
@@ -705,19 +705,19 @@ If saving to Quarry is slower than tapping Instagram's bookmark icon, Trevor wil
 | `D-1` | Confirm the Instagram posture in `R-1`: user-driven clipping plus official export, no credentialed server-side scraping | Confirm. It is the same rule HAUS already set for Buildertrend, and account risk is not worth the convenience |
 | `D-2` | Storage primary: Cloudflare R2 with local mirror, or fileserver-primary with cloud backup | R2 primary. The library has to work from a job site |
 | `D-3` | Are client-facing share boards in scope, and for which phase | Yes, P3. Not in the MVP |
-| `D-4` | Who owns the taxonomy vocabulary | The interior designer. One named person, with the `qry-interiors` agent representing the role during the build |
-| `D-5` | Same database as Palette, or separate with an API between | Separate. Different lifecycles, different scaling shapes, and a clean boundary at `FR-38` |
+| `D-4` | Who owns the taxonomy vocabulary | The interior designer. One named person, with the `plt-interiors` agent representing the role during the build |
+| `D-5` | Same database as The HausBuch, or separate with an API between | Separate. Different lifecycles, different scaling shapes, and a clean boundary at `FR-38` |
 | `D-6` | Budget ceiling for the initial AI tagging backfill, and approval to run it | Set a hard ceiling before P1's backfill; use the Batches API (50% off) and prompt caching, and report actual spend per run |
-| `D-7` | The product name, from the list at the top | Quarry |
+| `D-7` | The product name, from the list at the top | Palette |
 | `D-8` | Apply for Pinterest standard API access now | Yes, at project start, so approval overlaps P0 |
 
 ---
 
 ## 10. On approval
 
-On approval of this document I will, as `qry-pm`:
+On approval of this document I will, as `plt-pm`:
 
-1. Create the repository under `HAUS-Custom-Homes`, with `CLAUDE.md`, `HANDOFF.md`, `CHANGELOG.md` and `docs/` following the Palette conventions.
+1. Create the repository under `HAUS-Custom-Homes`, with `CLAUDE.md`, `HANDOFF.md`, `CHANGELOG.md` and `docs/` following the The HausBuch conventions.
 2. Write the eleven agent role files into `.claude/agents/`.
 3. Write `ROUND-1-BRIEF.md` covering Phase 0, and start the loop.
 
