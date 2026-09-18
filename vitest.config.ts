@@ -6,7 +6,7 @@ export default defineConfig({
   test: {
     // Real Postgres (PGlite) in memory, and a throwaway object store.
     // Agents and tests never touch ./data. Carried straight from the The HausBuch rule.
-    env: { PALETTE_PGLITE: "memory", PALETTE_DATA_DIR: "./data-test", PALETTE_STORE_DRIVER: "local" },
+    env: { PALETTE_PGLITE: "memory", PALETTE_DATA_DIR: "./data-test", PALETTE_STORE_DRIVER: "local", PALETTE_EMBEDDINGS: "fake" },
     // The extension has its own runner and its own node_modules.
     exclude: ["extension/**", "node_modules/**", ".next/**"],
     fileParallelism: false,

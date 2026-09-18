@@ -88,6 +88,19 @@ DATABASE_URL='postgres://...' PALETTE_STORE_DRIVER=r2 ... npm run import -- ./da
 
 Imports are idempotent by hash, so running it twice adds nothing.
 
+## Embeddings on the server
+
+CLIP runs inside the app process and needs its weights on disk. On Vercel the filesystem is
+ephemeral and the function bundle cannot hold 350MB, so on Vercel set `PALETTE_EMBEDDINGS=off`
+and run `npm run embed` from any machine with `DATABASE_URL` and the R2 env set: it embeds
+whatever is pending and writes vectors to the shared database, which the app searches. A cron
+on the office fileserver container, or on a laptop, is enough. If the app moves to a container
+host (Proxmox LXC, Fly, Railway), set it to `clip` there and the app embeds on upload.
+
+When the library passes roughly 50,000 images, add pgvector: `CREATE EXTENSION vector;` then a
+`vector(512)` column populated from `embeddings.vector`, an HNSW index, and point
+`src/search/vectors.ts` at it. Everything above that file stays the same.
+
 ## Not yet exercised
 
 The R2 driver (`src/storage/r2.ts`) was written against the S3 API but has not been run against

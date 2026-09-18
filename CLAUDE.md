@@ -15,6 +15,8 @@ Read HANDOFF.md first: where work stands, what is next, and what is waiting on T
     npm run import -- <folder> [--as email] [--haus Name] [--recursive]
     npm run clip -- <image-url>
     npm run tag                        # process the tag queue; -- --all re-tags everything (FR-20)
+    npm run embed                      # CLIP-embed anything without a vector (FR-17 Layer A)
+    npm run clip:check                 # prove CLIP runs on this machine, warm the model cache
     npm run verify -- --full           # integrity scrub (FR-40); works against R2 too
     npm run migrate                    # against DATABASE_URL, for a new production database
     npm run typecheck
@@ -27,7 +29,7 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
 `drizzle/` DDL and the enforcement triggers · `src/storage/` ObjectStore, local and R2 drivers ·
 `src/derive/` sharp, blurhash, perceptual hashes · `src/ingest/` pipeline, dedupe, tag queue ·
 `src/ai/` Tagger, taxonomy-to-schema, the FR-19 writer · `src/taxonomy/` vocabulary seed ·
-`src/search/` tsvector search, facets, per-user views · `src/auth.ts` + `src/auth.config.ts` ·
+`src/search/` hybrid search, facets, `vectors.ts` in-process CLIP index · `src/auth.ts` + `src/auth.config.ts` ·
 `src/lib/users.ts` people and device tokens · `src/boards/` boards · `app/` pages and routes ·
 `tools/` CLIs · `tests/` the guarantees · `extension/` the WXT browser extension, its own package
 
@@ -44,7 +46,11 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
 - **`src/auth.config.ts` runs on the Edge runtime.** It imports nothing from Node and not even
   `src/config.ts`. Database work belongs in `src/auth.ts` callbacks only.
 - Native and WASM packages stay in `serverExternalPackages` in `next.config.ts`: `sharp`,
-  `@electric-sql/pglite`, `postgres`. Bundling PGlite breaks every query.
+  `@electric-sql/pglite`, `postgres`, `@huggingface/transformers`, `onnxruntime-node`. Bundling
+  PGlite breaks every query; bundling transformers.js breaks embedding.
+- Embeddings are `real[]`, one schema for both databases. Do not introduce a pgvector column
+  without the DEPLOY.md migration note; the in-process index in `src/search/vectors.ts` is the
+  search path until then. Tests run with `PALETTE_EMBEDDINGS=fake`.
 - Raw SQL uses `$1` placeholders through `db().query()` / `one()` / `transaction()`. Do not
   import a driver directly anywhere else.
 - Each person owns their images. Quarantine and review lists are filtered by `created_by`.

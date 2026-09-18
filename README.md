@@ -33,7 +33,7 @@ npm install
 cp .env.example .env               # PALETTE_DEV_AUTH=1 gives a local sign-in box
 npm run setup                      # migrate + seed: 8 facets, 129 terms
 npm run demo && npm run import -- ./demo-images --haus Hurst
-npm run tag
+npm run tag && npm run embed       # tag, then CLIP-embed (first run downloads ~350MB)
 npm run dev                        # http://localhost:3200
 ```
 
@@ -50,7 +50,7 @@ survive that, by design and by test.
 
 - **Capture.** Share, then Palette. Two taps from any app on a phone; drop or paste on desktop.
   The image is stored by hash before anything else happens, and tagged within a minute.
-- **Find.** One search box plus a facet rail: Haus, image type, space, element, material, style,
+- **Find.** One search box that understands both words and pictures: a lexical ranking over tags, synonyms and provenance is fused with a CLIP ranking of what the images look like, so "warm kitchen with a plaster hood" works even when no tag says so. Plus a facet rail: Haus, image type, space, element, material, style,
   color. Counts respond to the active filter. Any search is a URL you can send.
 - **Curate.** Boards: a haus, a room, a meeting. Team-visible unless the owner makes one private.
 - **Own.** "Mine" shows what you saved. "Needs me" is your list and nobody else's: images the
@@ -87,7 +87,16 @@ the response has gone; Vercel Cron and `npm run tag` catch anything left. Jobs a
 `FOR UPDATE SKIP LOCKED`, so three workers never tag one image twice. After three failures a
 job is quarantined and its owner is asked, not the whole team.
 
-### 5. One Postgres, two doors
+### 5. Embeddings without a vector database
+
+CLIP ViT-B/32 runs in-process through transformers.js (no Python, no GPU, no API cost; the
+weights download once into `data/models`). Vectors are stored as `real[]` so PGlite and hosted
+Postgres share one schema, and searched from an in-process cosine index that is milliseconds at
+50,000 images. When the library outgrows that, the upgrade is pgvector with an HNSW index on the
+same column; `docs/DEPLOY.md` has the step. `PALETTE_EMBEDDINGS=off` turns it off, `fake` is what
+tests use.
+
+### 6. One Postgres, two doors
 
 `DATABASE_URL` unset means PGlite: Postgres 18 compiled to WASM, in-process, persisted under
 `data/pg`. Set, it means a hosted Postgres. Same DDL, same PL/pgSQL triggers, same queries. The
@@ -102,7 +111,7 @@ src/storage/   ObjectStore, local driver, R2 driver
 src/derive/    sharp derivatives, blurhash, dHash + aHash
 src/ingest/    ingest, dedupe, near-duplicate clustering, tag queue
 src/ai/        Tagger, taxonomy-to-schema, the FR-19 writer, open-facet terms
-src/search/    tsvector search, facet counts, per-user views, quarantine
+src/search/    hybrid search (tsvector + CLIP, rank fusion), facets, per-user views, vectors index
 src/auth*.ts   Auth.js: edge-safe config, DB-backed callbacks
 src/lib/       users, device tokens, boot
 app/           library, item, boards, attention, settings, ingest, share, cron, asset, tokens, me, taxonomy
@@ -119,7 +128,6 @@ docs/          REF-01-PRD.md, DEPLOY.md, SHORTCUT.md
 |---|---|
 | **R2 against a real bucket** | Driver written, not yet exercised. First `npm run verify -- --full` on R2 is the test. |
 | **Extension against live Instagram** | Built and unit-tested; not yet run on a real saved list from this machine. The scan relies on an `<img>` inside a link to `/p/`, `/reel/` or `/pin/`. |
-| **Image embeddings** (FR-17 Layer A) | Semantic search is lexical only; "more like this" uses shared tags. Insertion points marked `VECTOR`. |
 | **FR-18 eval gate** | No hand-labeled set yet. Until it exists, tag quality is an impression. |
 | **Role admin, board reordering, local mirror and cold copy** (FR-14, FR-15) | Roles change in SQL; boards keep insertion order; no mirror job yet. |
 

@@ -8,6 +8,7 @@ import {
   pgEnum,
   pgTable,
   primaryKey,
+  real,
   smallint,
   text,
   timestamp,
@@ -150,6 +151,18 @@ export const itemTerms = pgTable(
     createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [primaryKey({ columns: [t.itemId, t.termId] })],
+);
+
+export const embeddings = pgTable(
+  "embeddings",
+  {
+    itemId: uuid("item_id").notNull().references(() => items.id, { onDelete: "cascade" }),
+    model: text("model").notNull(),
+    dim: integer("dim").notNull(),
+    vector: real("vector").array().notNull(),
+    createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [primaryKey({ columns: [t.itemId, t.model] })],
 );
 
 export const proposedTerms = pgTable("proposed_terms", {

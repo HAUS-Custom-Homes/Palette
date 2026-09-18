@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/auth";
 import { taggerMode } from "@/ai/tagger";
+import { listBoards } from "@/boards/boards";
+import { Grid } from "./ui/grid";
 import { boot } from "@/lib/boot";
 import { queueDepth } from "@/ingest/tag-worker";
 import { facetCounts, search, stats, type SearchParams } from "@/search/query";
@@ -55,8 +57,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
   const allFacets = await facetCounts({});
   const params = parse(sp, allFacets.map((f) => f.key), user.id);
 
-  const [counts, { items, total }, s, queue] = await Promise.all([
-    facetCounts(params), search(params), stats(user.id), queueDepth(),
+  const [counts, { items, total }, s, queue, boards] = await Promise.all([
+    facetCounts(params), search(params), stats(user.id), queueDepth(), listBoards(user.id),
   ]);
   const mode = taggerMode();
   const pending = (queue.queued ?? 0) + (queue.failed ?? 0) + (queue.running ?? 0);
@@ -153,22 +155,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
             <p className="hint" style={{ padding: "4px 20px 0" }}>
               {total} {total === 1 ? "item" : "items"}{anyFilter ? " matching" : " in the library"}
             </p>
-            <div className="grid">
-              {items.map((it) => (
-                <Link className="card" key={it.id} href={`/item/${it.id}`}>
-                  <img src={`/api/asset/${it.sha256}/grid`} alt={it.captionAi ?? it.title ?? "reference"}
-                       width={it.width ?? 400} height={it.height ?? 300} loading="lazy" />
-                  <div className="badges">
-                    {it.needsReview > 0 && <span className="badge" data-kind="review">review</span>}
-                    {it.sourceKind && it.sourceKind !== "upload" && <span className="badge">{it.sourceKind}</span>}
-                  </div>
-                  <figcaption>
-                    {it.captionAi ?? it.title ?? "untitled"}
-                    {it.ownerName && <span className="by"> · {it.ownerName}</span>}
-                  </figcaption>
-                </Link>
-              ))}
-            </div>
+            <Grid items={items} boards={boards.map((b) => ({ id: b.id, name: b.name }))}
+                  hauses={counts.find((f) => f.key === "project")?.terms ?? []} />
           </>
         )}
       </main>

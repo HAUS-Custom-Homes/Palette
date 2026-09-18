@@ -88,6 +88,34 @@ export async function removeFromBoard(boardId: string, itemId: string, userId: s
   await d.query(`INSERT INTO audit_events (actor_id, entity, entity_id, action, after) VALUES ($1, 'board', $2, 'item_removed', $3)`, [userId, boardId, JSON.stringify({ itemId })]);
 }
 
+/** Nudge one item earlier or later. Positions are renumbered so gaps never accumulate. */
+export async function moveOnBoard(boardId: string, itemId: string, direction: "up" | "down"): Promise<void> {
+  const d = await db();
+  await d.transaction(async (tx) => {
+    const rows = await tx.query<{ item_id: string }>(
+      `SELECT item_id FROM board_items WHERE board_id = $1 ORDER BY position, item_id FOR UPDATE`,
+      [boardId],
+    );
+    const order = rows.map((r) => r.item_id);
+    const i = order.indexOf(itemId);
+    const j = direction === "up" ? i - 1 : i + 1;
+    if (i < 0 || j < 0 || j >= order.length) return;
+    [order[i], order[j]] = [order[j], order[i]];
+    for (let k = 0; k < order.length; k++) {
+      await tx.query(`UPDATE board_items SET position = $1 WHERE board_id = $2 AND item_id = $3`, [k, boardId, order[k]]);
+    }
+  });
+}
+
+export async function setBoardCover(boardId: string, itemId: string, userId: string): Promise<void> {
+  const d = await db();
+  await d.query(
+    `UPDATE boards SET cover_item_id = $1 WHERE id = $2 AND (owner_id = $3 OR owner_id IS NULL)
+        AND EXISTS (SELECT 1 FROM board_items WHERE board_id = $2 AND item_id = $1)`,
+    [itemId, boardId, userId],
+  );
+}
+
 export async function setBoardPrivacy(boardId: string, userId: string, isPrivate: boolean): Promise<void> {
   const d = await db();
   await d.query(`UPDATE boards SET is_private = $1 WHERE id = $2 AND owner_id = $3`, [isPrivate, boardId, userId]);

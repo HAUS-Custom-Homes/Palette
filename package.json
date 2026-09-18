@@ -17,13 +17,16 @@
     "tag": "tsx tools/retag.ts",
     "verify": "tsx tools/verify.ts",
     "demo": "tsx tools/make-demo-images.ts",
-    "icons": "tsx tools/make-icons.ts"
+    "icons": "tsx tools/make-icons.ts",
+    "embed": "tsx tools/embed.ts",
+    "clip:check": "node tools/clip-check.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",
     "@aws-sdk/client-s3": "^3.1135.0",
     "@aws-sdk/s3-request-presigner": "^3.1135.0",
     "@electric-sql/pglite": "^0.5.8",
+    "@huggingface/transformers": "^4.3.0",
     "blurhash": "^2.0.5",
     "drizzle-orm": "^0.45.2",
     "next": "15.5.25",

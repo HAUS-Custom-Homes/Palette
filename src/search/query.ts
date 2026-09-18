@@ -1,14 +1,17 @@
 import { config } from "@/config";
 import { db } from "@/db/client";
 import { hammingDistance } from "@/derive/pipeline";
+import { fuse, searchByText, similarByVector } from "./vectors";
 
 /**
  * REF-01 FR-26, FR-27, FR-31.
  *
- * Built: the lexical half of hybrid search, full facet filtering with counts
- * computed against the active filter, per-user views, and similarity by tag
- * overlap. Not built, and named rather than hidden: the vector half (FR-17
- * Layer A). Every place it belongs is marked VECTOR.
+ * Hybrid search: the lexical half (tsvector over text, tags, synonyms and
+ * provenance) and the semantic half (CLIP, src/search/vectors.ts) each
+ * produce a ranking, and reciprocal rank fusion merges them. Facet filters,
+ * "Mine" and "Review" apply to the merged list, so a picture that only the
+ * vector half found still has to satisfy the facets. Facet counts are
+ * computed against the active filter so the rail never lies.
  */
 
 export type SearchParams = {
@@ -43,12 +46,12 @@ function toTsQuery(q: string): string {
   return words.map((w, i) => (i === words.length - 1 ? `${w}:*` : w)).join(" & ");
 }
 
-function buildWhere(p: SearchParams, startAt = 1) {
+function buildWhere(p: SearchParams, startAt = 1, opts: { skipText?: boolean } = {}) {
   const wheres: string[] = ["i.deleted_at IS NULL", "i.variant_of IS NULL"];
   const params: unknown[] = [];
   let n = startAt;
 
-  if (p.q?.trim()) {
+  if (p.q?.trim() && !opts.skipText) {
     const ts = toTsQuery(p.q);
     if (ts) {
       wheres.push(`i.search_tsv @@ to_tsquery('english', $${n++})`);
@@ -84,36 +87,58 @@ function buildWhere(p: SearchParams, startAt = 1) {
   return { sql: wheres.join("\n AND "), params, next: n };
 }
 
+const ITEM_SELECT = `
+  SELECT i.id, i.title, i.caption_ai AS "captionAi",
+         a.width, a.height, a.blurhash, a.sha256,
+         i.captured_at::text AS "capturedAt",
+         (SELECT kind::text FROM sources s WHERE s.item_id = i.id LIMIT 1) AS "sourceKind",
+         u.name AS "ownerName",
+         (SELECT count(*)::int FROM item_terms it
+           WHERE it.item_id = i.id AND it.source = 'ai' AND it.confidence < ${config.reviewConfidenceThreshold}) AS "needsReview"
+    FROM items i
+    JOIN assets a ON a.id = i.asset_id
+    LEFT JOIN users u ON u.id = i.created_by`;
+
 export async function search(p: SearchParams): Promise<{ items: ItemRow[]; total: number }> {
   const d = await db();
-  const { sql, params, next } = buildWhere(p);
   const limit = Math.min(p.limit ?? 60, 200);
   const offset = p.offset ?? 0;
 
+  // ---- with a query: two rankings, fused ----------------------------------
+  if (p.q?.trim()) {
+    const lex = buildWhere(p);
+    const lexical = await d.query<{ id: string }>(
+      `SELECT i.id FROM items i
+        WHERE ${lex.sql}
+        ORDER BY ts_rank_cd(i.search_tsv, to_tsquery('english', $${lex.next})) DESC, i.captured_at DESC
+        LIMIT 200`,
+      [...lex.params, toTsQuery(p.q)],
+    );
+    const semantic = await searchByText(p.q, 200);
+    const fused = fuse([lexical.map((r) => r.id), semantic.map((s) => s.itemId)]);
+    if (!fused.length) return { items: [], total: 0 };
+
+    // Filters other than the text apply to the fused list.
+    const rest = buildWhere(p, 1, { skipText: true });
+    const rows = await d.query<ItemRow>(
+      `${ITEM_SELECT}
+        WHERE ${rest.sql} AND i.id = ANY($${rest.next}::uuid[])
+        ORDER BY array_position($${rest.next}::uuid[], i.id)`,
+      [...rest.params, fused],
+    );
+    return { items: rows.slice(offset, offset + limit), total: rows.length };
+  }
+
+  // ---- without a query: newest first --------------------------------------
+  const { sql, params, next } = buildWhere(p);
   const items = await d.query<ItemRow>(
-    `SELECT i.id, i.title, i.caption_ai AS "captionAi",
-            a.width, a.height, a.blurhash, a.sha256,
-            i.captured_at::text AS "capturedAt",
-            (SELECT kind::text FROM sources s WHERE s.item_id = i.id LIMIT 1) AS "sourceKind",
-            u.name AS "ownerName",
-            (SELECT count(*)::int FROM item_terms it
-              WHERE it.item_id = i.id AND it.source = 'ai' AND it.confidence < ${config.reviewConfidenceThreshold}) AS "needsReview"
-       FROM items i
-       JOIN assets a ON a.id = i.asset_id
-       LEFT JOIN users u ON u.id = i.created_by
-      WHERE ${sql}
-      ORDER BY i.captured_at DESC
-      LIMIT $${next} OFFSET $${next + 1}`,
+    `${ITEM_SELECT} WHERE ${sql} ORDER BY i.captured_at DESC LIMIT $${next} OFFSET $${next + 1}`,
     [...params, limit, offset],
   );
-
   const total = await d.one<{ n: string }>(
     `SELECT count(*)::text AS n FROM items i JOIN assets a ON a.id = i.asset_id WHERE ${sql}`,
     params,
   );
-
-  // VECTOR: when embeddings land, run the ANN query here and fuse the two
-  // ranked lists with reciprocal rank fusion before the limit is applied.
   return { items, total: Number(total?.n ?? 0) };
 }
 
@@ -210,10 +235,24 @@ export async function getItem(id: string) {
   return { item, tags, sources, variants, job };
 }
 
-/** FR-31, concept form: shares tags. VECTOR: embeddings replace this and keep the rest. */
-export async function similar(itemId: string, limit = 12) {
+/**
+ * FR-31. Looks like this one: by vector when the item has one, else by
+ * shared tags, which is at least explainable.
+ */
+export async function similar(itemId: string, limit = 12): Promise<Array<{ id: string; sha256: string; shared: number; how: "vector" | "tags" }>> {
   const d = await db();
-  return d.query<{ id: string; sha256: string; shared: number }>(
+  const near = await similarByVector(itemId, limit);
+  if (near.length) {
+    const ids = near.map((n) => n.itemId);
+    const rows = await d.query<{ id: string; sha256: string }>(
+      `SELECT i.id, a.sha256 FROM items i JOIN assets a ON a.id = i.asset_id
+        WHERE i.id = ANY($1::uuid[]) AND i.deleted_at IS NULL
+        ORDER BY array_position($1::uuid[], i.id)`,
+      [ids],
+    );
+    return rows.map((r) => ({ ...r, shared: 0, how: "vector" as const }));
+  }
+  const byTags = await d.query<{ id: string; sha256: string; shared: number }>(
     `SELECT i.id, a.sha256, count(*)::int AS shared
        FROM item_terms mine
        JOIN item_terms theirs ON theirs.term_id = mine.term_id AND theirs.item_id <> mine.item_id
@@ -226,6 +265,7 @@ export async function similar(itemId: string, limit = 12) {
       LIMIT $2`,
     [itemId, limit],
   );
+  return byTags.map((r) => ({ ...r, how: "tags" as const }));
 }
 
 /**

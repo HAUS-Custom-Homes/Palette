@@ -55,6 +55,13 @@ export const config = {
     apiKey: process.env.ANTHROPIC_API_KEY || null,
     /** REF-01 default. Do not downgrade without passing the FR-18 eval gate. */
     model: process.env.PALETTE_TAG_MODEL ?? "claude-opus-5",
+    /**
+     * FR-17 Layer A. clip: CLIP in-process via transformers.js (downloads
+     * weights on first use). fake: deterministic vectors for tests. off: no
+     * embeddings, search is lexical only.
+     */
+    embeddings: (process.env.PALETTE_EMBEDDINGS ?? "clip") as "clip" | "fake" | "off",
+    modelDir: process.env.PALETTE_MODEL_DIR ?? path.join(dataDir, "models"),
   },
 
   /** FR-12 derivative sizes. */

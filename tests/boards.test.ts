@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { addToBoard, boardsForItem, createBoard, getBoard, listBoards, removeFromBoard, setBoardPrivacy } from "@/boards/boards";
+import { addToBoard, boardsForItem, createBoard, getBoard, listBoards, moveOnBoard, removeFromBoard, setBoardCover, setBoardPrivacy } from "@/boards/boards";
 import { db } from "@/db/client";
 import { migrate } from "@/db/migrate";
 import { ingestBuffer } from "@/ingest/ingest";
@@ -54,6 +54,20 @@ describe("boards", () => {
     expect((await listBoards(trevor.id)).some((b) => b.id === id)).toBe(false);
     expect((await listBoards(designer.id)).some((b) => b.id === id)).toBe(true);
     expect(await getBoard(id, trevor.id)).toBeNull();
+  });
+
+  it("reorders by nudging and picks a cover only from its own items", async () => {
+    const id = await createBoard(trevor.id, "Ordered");
+    await addToBoard(id, itemA, trevor.id);
+    await addToBoard(id, itemB, trevor.id);
+    await moveOnBoard(id, itemB, "up");
+    expect((await getBoard(id, trevor.id))!.items.map((i) => i.id)).toEqual([itemB, itemA]);
+    await moveOnBoard(id, itemB, "up"); // already first: no-op
+    expect((await getBoard(id, trevor.id))!.items.map((i) => i.id)).toEqual([itemB, itemA]);
+
+    await setBoardCover(id, itemA, trevor.id);
+    expect((await listBoards(trevor.id)).find((b) => b.id === id)!.coverSha).toBeTruthy();
+    await setBoardCover(id, itemA, designer.id); // not the owner: ignored, no throw
   });
 
   it("refuses a nonsense name", async () => {

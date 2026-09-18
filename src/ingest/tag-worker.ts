@@ -1,7 +1,9 @@
 import { config } from "@/config";
 import { db } from "@/db/client";
 import { applyTags } from "@/ai/apply-tags";
+import { embeddingsEnabled } from "@/ai/embedder";
 import { tagger, taggerMode } from "@/ai/tagger";
+import { embedItem } from "@/search/vectors";
 import { derivedKey, store } from "@/storage/object-store";
 
 /**
@@ -60,6 +62,12 @@ export async function runTagQueue(limit = 25): Promise<TagRunSummary> {
       const result = await t.tag(image, "image/webp", hint || undefined);
       await applyTags(itemId, result, t.name);
       costUsd += result.costUsd;
+
+      // FR-17 Layer A. A missing vector degrades search, it does not lose an
+      // image, so it never fails the tag job. `npm run embed` catches up.
+      if (embeddingsEnabled()) {
+        await embedItem(itemId).catch((e) => console.warn(`[embed] ${itemId}: ${(e as Error).message}`));
+      }
 
       await d.query(
         `UPDATE ingest_jobs SET state = 'done', finished_at = now(), cost_usd = $1, last_error = NULL WHERE id = $2`,

@@ -112,7 +112,9 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
                   </Link>
                 ))}
               </div>
-              <p className="hint" style={{ margin: "8px 0 0" }}>By shared tags. Visual similarity arrives with embeddings.</p>
+              <p className="hint" style={{ margin: "8px 0 0" }}>
+                {like[0]?.how === "vector" ? "By what it looks like (CLIP)." : "By shared tags, until this image is embedded."}
+              </p>
             </div>
           )}
         </div>

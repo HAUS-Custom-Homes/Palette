@@ -158,6 +158,19 @@ CREATE TABLE IF NOT EXISTS item_terms (
 );
 CREATE INDEX IF NOT EXISTS item_terms_term_idx ON item_terms (term_id) WHERE rejected = false;
 
+-- ============ FR-17 Layer A: embeddings, model-scoped so two can coexist ============
+-- real[] rather than pgvector so PGlite and hosted Postgres share one schema.
+-- Searched from an in-process index (src/search/vectors.ts). When the library
+-- outgrows that, add pgvector and an HNSW index on this column (docs/DEPLOY.md).
+CREATE TABLE IF NOT EXISTS embeddings (
+  item_id    uuid NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+  model      text NOT NULL,
+  dim        integer NOT NULL,
+  vector     real[] NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (item_id, model)
+);
+
 -- ============ FR-23 proposals ============
 CREATE TABLE IF NOT EXISTS proposed_terms (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),

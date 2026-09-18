@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   // All three must stay external to the server bundle: bundled, PGlite's
   // `new URL(..., import.meta.url)` reaches fs.readFile as a URL object and
   // every database call fails with "path argument must be of type string".
-  serverExternalPackages: ["sharp", "@electric-sql/pglite", "postgres"],
+  serverExternalPackages: ["sharp", "@electric-sql/pglite", "postgres", "@huggingface/transformers", "onnxruntime-node"],
   experimental: {
     serverActions: {
       // Folder imports and multi-file drops push large multipart bodies.
