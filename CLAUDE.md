@@ -18,6 +18,8 @@ Read HANDOFF.md first: where work stands, what is next, and what is waiting on T
     npm run embed                      # CLIP-embed anything without a vector (FR-17 Layer A)
     npm run clip:check                 # prove CLIP runs on this machine, warm the model cache
     npm run verify -- --full           # integrity scrub (FR-40); works against R2 too
+    npm run eval                       # FR-18 gate on evals/golden; -- --dry to only score
+    npm run export | mirror | backup | purge | watch | backfill:instagram   # see README
     npm run migrate                    # against DATABASE_URL, for a new production database
     npm run typecheck
     npm test
@@ -41,6 +43,9 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
   `originals/`. Derivatives are disposable; originals are the record.
 - `drizzle/triggers.sql` is applied by `src/db/migrate.ts`, which counts the four triggers and
   throws if any is missing. A database that cannot enforce FR-11 and FR-19 does not serve.
+- **FR-18: an AI tag is applied only on a facet whose gate has passed for that model.** Otherwise
+  `item_terms.suggested = true`: shown dashed, counted in review, excluded from filters and
+  facet counts. `applyTags()` decides; `tests/gates.test.ts` proves it. Do not bypass with SQL.
 - **The model never sees an open facet.** `project` (Haus) is human-only. Closed facets grow only
   through `proposed_terms` and a human promotion. `createOpenTerm()` refuses closed facets.
 - **`src/auth.config.ts` runs on the Edge runtime.** It imports nothing from Node and not even

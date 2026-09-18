@@ -142,6 +142,33 @@ CREATE TABLE IF NOT EXISTS taxonomy_terms (
   UNIQUE (facet_id, slug)
 );
 
+-- ============ FR-18 the eval gate, per facet and model ============
+-- A facet the current model has not passed the gate on is still tagged, but
+-- its tags are "suggested": shown dashed, routed to review, and not used for
+-- filtering. Passing is a measured fact recorded here by `npm run eval`.
+CREATE TABLE IF NOT EXISTS facet_gates (
+  facet_key  text NOT NULL,
+  model      text NOT NULL,
+  passed     boolean NOT NULL,
+  precision_ numeric(4,3),
+  recall     numeric(4,3),
+  threshold  numeric(4,3),
+  samples    integer NOT NULL DEFAULT 0,
+  ran_at     timestamptz NOT NULL DEFAULT now(),
+  PRIMARY KEY (facet_key, model)
+);
+
+CREATE TABLE IF NOT EXISTS eval_runs (
+  id               uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  model            text NOT NULL,
+  prompt_version   text NOT NULL,
+  taxonomy_version integer NOT NULL,
+  samples          integer NOT NULL,
+  scores           jsonb NOT NULL,
+  cost_usd         numeric(10,4),
+  ran_at           timestamptz NOT NULL DEFAULT now()
+);
+
 -- ============ the join FR-19 protects ============
 CREATE TABLE IF NOT EXISTS item_terms (
   item_id          uuid NOT NULL REFERENCES items(id) ON DELETE CASCADE,
@@ -149,6 +176,8 @@ CREATE TABLE IF NOT EXISTS item_terms (
   confidence       numeric(4,3),
   source           tag_source NOT NULL,
   rejected         boolean NOT NULL DEFAULT false,
+  -- FR-18: written by a model that has not passed the gate for this facet.
+  suggested        boolean NOT NULL DEFAULT false,
   set_by           uuid REFERENCES users(id),
   model_version    text,
   prompt_version   text,
@@ -206,6 +235,20 @@ CREATE TABLE IF NOT EXISTS board_items (
   PRIMARY KEY (board_id, item_id)
 );
 
+-- ============ FR-35 client feedback on a shared board ============
+-- A client taps "like" on a read-only board. No account, no session: the
+-- share token is the credential, and it expires.
+CREATE TABLE IF NOT EXISTS board_feedback (
+  id         uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  board_id   uuid NOT NULL REFERENCES boards(id) ON DELETE CASCADE,
+  item_id    uuid NOT NULL REFERENCES items(id) ON DELETE CASCADE,
+  viewer     text NOT NULL DEFAULT '',
+  sentiment  text NOT NULL DEFAULT 'like' CHECK (sentiment IN ('like','no')),
+  note       text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (board_id, item_id, viewer)
+);
+
 -- ============ jobs, integrity, audit ============
 CREATE TABLE IF NOT EXISTS ingest_jobs (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -242,3 +285,24 @@ CREATE TABLE IF NOT EXISTS audit_events (
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS audit_entity_idx ON audit_events (entity, entity_id, created_at DESC);
+
+-- ============ FR-2 Instagram export backfill worklist ============
+-- Parsed from Meta's "Download your information" archive. Each row is a
+-- post the person once saved; it is done the moment an item with the same
+-- external id exists, which the extension produces when they clip it.
+CREATE TABLE IF NOT EXISTS backfill (
+  id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     uuid NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  kind        source_kind NOT NULL,
+  external_id text NOT NULL,
+  url         text NOT NULL,
+  collection  text,
+  saved_at    timestamptz,
+  skipped     boolean NOT NULL DEFAULT false,
+  created_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, kind, external_id)
+);
+
+-- Columns added after the first release. ADD COLUMN IF NOT EXISTS keeps
+-- this file idempotent against a database created before they existed.
+ALTER TABLE item_terms ADD COLUMN IF NOT EXISTS suggested boolean NOT NULL DEFAULT false;

@@ -44,7 +44,7 @@ export default async function BoardsPage() {
                   {b.coverSha ? <img src={`/api/asset/${b.coverSha}/grid`} alt="" /> : <div className="board-empty">empty</div>}
                 </div>
                 <div className="board-meta">
-                  <div>{b.name}{b.isPrivate && <span className="hint"> · private</span>}</div>
+                  <div>{b.name}{b.isPrivate && <span className="hint"> · private</span>}{b.isSmart && <span className="hint"> · smart</span>}</div>
                   <div className="hint">{b.count} {b.count === 1 ? "image" : "images"}{b.ownerName ? ` · ${b.ownerName}` : ""}</div>
                 </div>
               </Link>

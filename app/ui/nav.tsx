@@ -9,6 +9,8 @@ export function Nav({ user, attention = 0 }: { user: User; attention?: number })
       <Link href="/attention">
         Needs me{attention > 0 && <span className="pill">{attention}</span>}
       </Link>
+      <Link href="/backfill">Backfill</Link>
+      <Link href="/people">People</Link>
       <Link href="/settings">Phone and settings</Link>
       <span className="spacer" />
       <span className="who">{user.name ?? user.email} · {user.role}</span>

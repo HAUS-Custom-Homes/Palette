@@ -11,6 +11,7 @@ export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
   matcher: [
-    "/((?!api/auth|api/ingest|api/cron|share|manifest.webmanifest|icons|_next/static|_next/image|favicon.ico).*)",
+    // api/asset checks its own session or share token (FR-35); s/ and api/s/ are the client-facing share surface.
+    "/((?!api/auth|api/ingest|api/cron|api/asset|api/s/|s/|share|manifest.webmanifest|icons|_next/static|_next/image|favicon.ico).*)",
   ],
 };

@@ -65,7 +65,7 @@ function buildWhere(p: SearchParams, startAt = 1, opts: { skipText?: boolean } =
       `EXISTS (SELECT 1 FROM item_terms it
                  JOIN taxonomy_terms t ON t.id = it.term_id
                  JOIN taxonomy_facets f ON f.id = t.facet_id
-                WHERE it.item_id = i.id AND it.rejected = false
+                WHERE it.item_id = i.id AND it.rejected = false AND it.suggested = false
                   AND f.key = $${n++} AND t.slug = ANY($${n++}::text[]))`,
     );
     params.push(facetKey, slugs);
@@ -74,7 +74,7 @@ function buildWhere(p: SearchParams, startAt = 1, opts: { skipText?: boolean } =
   if (p.reviewOnly) {
     wheres.push(
       `EXISTS (SELECT 1 FROM item_terms it
-                WHERE it.item_id = i.id AND it.source = 'ai' AND it.confidence < $${n++})`,
+                WHERE it.item_id = i.id AND it.source = 'ai' AND (it.confidence < $${n++} OR it.suggested))`,
     );
     params.push(config.reviewConfidenceThreshold);
   }
@@ -94,7 +94,7 @@ const ITEM_SELECT = `
          (SELECT kind::text FROM sources s WHERE s.item_id = i.id LIMIT 1) AS "sourceKind",
          u.name AS "ownerName",
          (SELECT count(*)::int FROM item_terms it
-           WHERE it.item_id = i.id AND it.source = 'ai' AND it.confidence < ${config.reviewConfidenceThreshold}) AS "needsReview"
+           WHERE it.item_id = i.id AND it.source = 'ai' AND (it.confidence < ${config.reviewConfidenceThreshold} OR it.suggested)) AS "needsReview"
     FROM items i
     JOIN assets a ON a.id = i.asset_id
     LEFT JOIN users u ON u.id = i.created_by`;
@@ -170,7 +170,7 @@ export async function facetCounts(p: SearchParams): Promise<FacetCount[]> {
     const rows = await d.query<{ slug: string; label: string; count: number }>(
       `SELECT t.slug, t.label, count(DISTINCT i.id)::int AS count
          FROM taxonomy_terms t
-         LEFT JOIN item_terms it ON it.term_id = t.id AND it.rejected = false
+         LEFT JOIN item_terms it ON it.term_id = t.id AND it.rejected = false AND it.suggested = false
          LEFT JOIN items i ON i.id = it.item_id AND (${sql})
         WHERE t.facet_id = $${next} AND t.status = 'active'
         GROUP BY t.id, t.slug, t.label, t.sort_order
@@ -206,7 +206,7 @@ export async function getItem(id: string) {
   const tags = await d.query<Record<string, unknown>>(
     `SELECT f.key AS "facetKey", f.label AS "facetLabel", f.is_open AS "facetOpen",
             t.id AS "termId", t.slug, t.label,
-            it.confidence::float AS confidence, it.source::text AS source, it.rejected,
+            it.confidence::float AS confidence, it.source::text AS source, it.rejected, it.suggested,
             it.model_version AS "modelVersion", su.name AS "setByName"
        FROM item_terms it
        JOIN taxonomy_terms t ON t.id = it.term_id
@@ -314,9 +314,9 @@ export async function stats(ownerId?: string) {
        (SELECT coalesce(sum(byte_size),0) FROM assets)::text AS bytes,
        (SELECT count(DISTINCT item_id) FROM item_terms WHERE source = 'ai')::text AS tagged,
        (SELECT count(*) FROM item_terms WHERE source = 'human')::text AS "humanTags",
-       (SELECT count(DISTINCT item_id) FROM item_terms WHERE source = 'ai' AND confidence < $1)::text AS "needsReview",
+       (SELECT count(DISTINCT item_id) FROM item_terms WHERE source = 'ai' AND (confidence < $1 OR suggested))::text AS "needsReview",
        (SELECT count(DISTINCT it.item_id) FROM item_terms it JOIN items i ON i.id = it.item_id
-         WHERE it.source = 'ai' AND it.confidence < $1 AND i.created_by = $2)::text AS "myReview",
+         WHERE it.source = 'ai' AND (it.confidence < $1 OR it.suggested) AND i.created_by = $2)::text AS "myReview",
        (SELECT count(*) FROM ingest_jobs j JOIN items i ON i.id = (j.payload->>'itemId')::uuid
          WHERE j.state = 'quarantined' AND i.created_by = $2)::text AS "myQuarantined",
        (SELECT count(*) FROM proposed_terms WHERE status = 'pending')::text AS proposed,

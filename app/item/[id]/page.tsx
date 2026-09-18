@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 
 type Tag = {
   facetKey: string; facetLabel: string; facetOpen: boolean; termId: string; slug: string; label: string;
-  confidence: number | null; source: string; rejected: boolean; modelVersion: string | null; setByName: string | null;
+  confidence: number | null; source: string; rejected: boolean; suggested: boolean; modelVersion: string | null; setByName: string | null;
 };
 
 /**
@@ -188,11 +188,19 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
               <div key={facet} style={{ marginBottom: 10 }}>
                 <div className="facet-label">{facet}</div>
                 {list.map((t) => (
-                  <span className="tag" key={t.termId} data-src={t.source}
+                  <span className="tag" key={t.termId} data-src={t.source} data-suggested={t.suggested}
                         data-low={t.source === "ai" && (t.confidence ?? 1) < 0.65}
-                        title={t.source === "human" ? `Set by ${t.setByName ?? "a person"}. No model run can change this.` : `${t.modelVersion ?? "ai"}, confidence ${(t.confidence ?? 0).toFixed(2)}`}>
+                        title={t.source === "human" ? `Set by ${t.setByName ?? "a person"}. No model run can change this.` : t.suggested ? `Suggested by ${t.modelVersion ?? "ai"}, which has not passed the quality gate for ${t.facetLabel.toLowerCase()}. Not used for filtering until accepted.` : `${t.modelVersion ?? "ai"}, confidence ${(t.confidence ?? 0).toFixed(2)}`}>
                     {t.label}
-                    {t.source === "ai" ? <span className="conf">{(t.confidence ?? 0).toFixed(2)}</span> : <span className="conf">{t.setByName ?? "human"}</span>}
+                    {t.source === "ai" ? <span className="conf">{t.suggested ? "suggested" : (t.confidence ?? 0).toFixed(2)}</span> : <span className="conf">{t.setByName ?? "human"}</span>}
+                    {t.suggested && (
+                      <form action={toggle} style={{ display: "inline" }}>
+                        <input type="hidden" name="itemId" value={id} />
+                        <input type="hidden" name="termId" value={t.termId} />
+                        <input type="hidden" name="action" value="add" />
+                        <button type="submit" title="Accept: makes it yours, permanently">✓</button>
+                      </form>
+                    )}
                     <form action={toggle} style={{ display: "inline" }}>
                       <input type="hidden" name="itemId" value={id} />
                       <input type="hidden" name="termId" value={t.termId} />

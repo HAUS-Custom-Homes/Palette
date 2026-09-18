@@ -19,7 +19,14 @@
     "demo": "tsx tools/make-demo-images.ts",
     "icons": "tsx tools/make-icons.ts",
     "embed": "tsx tools/embed.ts",
-    "clip:check": "node tools/clip-check.mjs"
+    "clip:check": "node tools/clip-check.mjs",
+    "eval": "tsx tools/eval.ts",
+    "export": "tsx tools/export.ts",
+    "mirror": "tsx tools/mirror.ts",
+    "backup": "tsx tools/backup.ts",
+    "purge": "tsx tools/purge.ts",
+    "watch": "tsx tools/watch.ts",
+    "backfill:instagram": "tsx tools/import-instagram-export.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

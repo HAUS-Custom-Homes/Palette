@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { currentUser } from "@/auth";
+import { tokenCoversAsset } from "@/boards/boards";
 import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
 import { derivedKey, store } from "@/storage/object-store";
@@ -14,7 +15,11 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ sha: strin
   if (!/^[a-f0-9]{64}$/.test(sha)) return new Response("bad hash", { status: 400 });
 
   await boot();
-  if (!(await currentUser())) return new Response("sign in", { status: 401 });
+  // A session, or a live share token that covers this exact image (FR-35).
+  // The token grants nothing beyond the images on its board.
+  const shareToken = _req.nextUrl.searchParams.get("s");
+  const allowed = (await currentUser()) ? true : shareToken ? await tokenCoversAsset(shareToken, sha) : false;
+  if (!allowed) return new Response("sign in", { status: 401 });
 
   const d = await db();
   const asset = await d.one<{ storage_key: string; mime_type: string }>(

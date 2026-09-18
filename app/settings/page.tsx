@@ -1,6 +1,9 @@
 import { requireUser } from "@/auth";
 import { boot } from "@/lib/boot";
 import { listDeviceTokens } from "@/lib/users";
+import { gateSummary } from "@/ai/gates";
+import { taggerMode } from "@/ai/tagger";
+import { config } from "@/config";
 import { Nav } from "../ui/nav";
 import { Tokens } from "./tokens";
 
@@ -10,6 +13,8 @@ export default async function SettingsPage() {
   await boot();
   const user = await requireUser();
   const tokens = await listDeviceTokens(user.id);
+  const model = taggerMode() === "claude" ? config.ai.model : "heuristic-v1";
+  const gates = await gateSummary(model);
 
   return (
     <div>
@@ -45,6 +50,30 @@ export default async function SettingsPage() {
           <p className="hint" style={{ margin: 0 }}>
             Open Palette in Chrome, choose <b>Add to Home screen</b>. Palette then appears in the share sheet of every app.
           </p>
+        </div>
+
+        <div className="panel">
+          <h3>Tag quality gate</h3>
+          <p className="hint" style={{ marginTop: 0 }}>
+            Model <code>{model}</code>. A facet's tags are applied only after <code>npm run eval</code> has recorded a pass for it
+            on the golden set; until then they are suggestions.
+            {config.ai.trustUngated && <b> PALETTE_TRUST_UNGATED is on: every facet is being applied unmeasured.</b>}
+          </p>
+          {gates.length === 0 ? (
+            <p className="hint" style={{ margin: 0 }}>No eval has been run for this model. Everything it tags is suggested. See <code>evals/README.md</code>.</p>
+          ) : (
+            <table className="table">
+              <thead><tr><th>Facet</th><th>Precision</th><th>Recall</th><th>Threshold</th><th>Verdict</th><th>Images</th></tr></thead>
+              <tbody>
+                {gates.map((g) => (
+                  <tr key={g.facet}>
+                    <td>{g.facet}</td><td>{g.precision?.toFixed(3)}</td><td>{g.recall?.toFixed(3)}</td><td>{g.threshold}</td>
+                    <td style={{ color: g.passed ? "var(--human)" : "var(--warn)" }}>{g.passed ? "applied" : "suggested"}</td><td>{g.samples}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
         </div>
 
         <div className="panel">

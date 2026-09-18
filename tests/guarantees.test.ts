@@ -69,6 +69,17 @@ beforeAll(async () => {
   await seedTaxonomy();
   trevor = await upsertUser({ email: "trevor@hauscustomhomes.com", name: "Trevor" });
   designer = await upsertUser({ email: "designer@hauscustomhomes.com", name: "Designer" });
+  // These tests are about FR-19 and search, not the eval gate (tests/gates.test.ts
+  // covers that), so the test models are recorded as having passed every facet.
+  const d = await db();
+  for (const model of ["m", "model-v1", "model-v2"]) {
+    for (const f of SEED_FACETS) {
+      await d.query(
+        `INSERT INTO facet_gates (facet_key, model, passed, samples) VALUES ($1, $2, true, 200) ON CONFLICT DO NOTHING`,
+        [f.key, model],
+      );
+    }
+  }
 });
 
 afterAll(async () => { await (await db()).close(); });

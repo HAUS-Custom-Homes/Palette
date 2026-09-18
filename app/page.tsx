@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/auth";
 import { taggerMode } from "@/ai/tagger";
-import { listBoards } from "@/boards/boards";
+import { redirect } from "next/navigation";
+import { createBoard, listBoards } from "@/boards/boards";
 import { Grid } from "./ui/grid";
 import { boot } from "@/lib/boot";
 import { queueDepth } from "@/ingest/tag-worker";
@@ -47,6 +48,14 @@ function hrefWith(current: SearchParams, patch: { facetKey?: string; slug?: stri
   for (const [k, v] of Object.entries(next)) if (v.length) params.set(k, v.join(","));
   const s = params.toString();
   return s ? `/?${s}` : "/";
+}
+
+async function saveSearch(formData: FormData) {
+  "use server";
+  const u = await requireUser();
+  const filter = JSON.parse(String(formData.get("filter") ?? "{}")) as Record<string, unknown>;
+  const id = await createBoard(u.id, String(formData.get("name") ?? "Saved search"), "Smart board: updates as the library grows.", filter);
+  redirect(`/boards/${id}`);
 }
 
 export default async function Home({ searchParams }: { searchParams: Promise<Query> }) {
@@ -110,6 +119,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
             Review{s.needsReview > 0 ? ` (${s.needsReview})` : ""}
           </Link>
           {anyFilter && <Link className="btn" href="/">Clear</Link>}
+          {anyFilter && !params.reviewOnly && !mine && (
+            <form action={saveSearch}>
+              <input type="hidden" name="filter" value={JSON.stringify({ q: params.q, facets: params.facets })} />
+              <input type="hidden" name="name" value={[params.q, ...Object.values(params.facets ?? {}).flat()].filter(Boolean).join(", ").slice(0, 80) || "Saved search"} />
+              <button className="btn" type="submit" title="A smart board that stays current with this filter">Save search</button>
+            </form>
+          )}
         </div>
 
         <div style={{ padding: "12px 20px 0" }}>

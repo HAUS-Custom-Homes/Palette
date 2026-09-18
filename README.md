@@ -15,7 +15,7 @@ controlled HAUS vocabulary, and makes it findable in a second, by the whole team
 
 ---
 
-## Status: Phase 0 plus extension and boards
+## Status: the REF-01 scope, less what needs credentials
 
 | | |
 |---|---|
@@ -24,7 +24,7 @@ controlled HAUS vocabulary, and makes it findable in a second, by the whole team
 | Sign-in | Google, restricted to `@hauscustomhomes.com`. First person in is owner |
 | Phones | iPhone via a two-tap Shortcut (`docs/SHORTCUT.md`), Android via the share sheet, both to `/api/ingest` |
 | Desktop | Browser extension (`extension/`): right-click save, toolbar popup, and import of existing Instagram and Pinterest saves from your own session |
-| Tests | 20 at the root on real Postgres plus 8 in the extension, each defending a named requirement |
+| Tests | 29 at the root on real Postgres plus 8 in the extension, each defending a named requirement |
 
 ## Running it locally
 
@@ -52,7 +52,9 @@ survive that, by design and by test.
   The image is stored by hash before anything else happens, and tagged within a minute.
 - **Find.** One search box that understands both words and pictures: a lexical ranking over tags, synonyms and provenance is fused with a CLIP ranking of what the images look like, so "warm kitchen with a plaster hood" works even when no tag says so. Plus a facet rail: Haus, image type, space, element, material, style,
   color. Counts respond to the active filter. Any search is a URL you can send.
-- **Curate.** Boards: a haus, a room, a meeting. Team-visible unless the owner makes one private.
+- **Curate.** Boards: a haus, a room, a meeting. Reorder, pick a cover, save a search as a smart board that stays current. Team-visible unless the owner makes one private.
+- **Show a client.** A board becomes an unguessable, expiring, read-only link. The client sees that board and nothing else, taps what they like, and the likes come back to the board.
+- **Trust the tags, measurably.** A model's tags on a facet are applied only after `npm run eval` records a pass on the designer's golden set. Until then they are suggestions: dashed, reviewable, never filtered on.
 - **Own.** "Mine" shows what you saved. "Needs me" is your list and nobody else's: images the
   tagger gave up on, and tags it was unsure about. Nothing on it is anyone else's job.
 - **Grow.** Anyone can add a haus. Nobody can add a material or a style by typing one; those grow
@@ -122,14 +124,28 @@ tests/         the guarantees
 docs/          REF-01-PRD.md, DEPLOY.md, SHORTCUT.md
 ```
 
-## Not built yet, and named rather than hidden
+## Tools
+
+```bash
+npm run embed                 # CLIP-embed anything without a vector
+npm run eval                  # score the tagger on evals/golden and record the gate (FR-18)
+npm run export -- ./out       # the whole library as files, manifest.json and items.csv (FR-42)
+npm run mirror                # verified copy of every original to PALETTE_MIRROR_DIR (FR-14)
+npm run backup                # database dump + hash manifest to PALETTE_BACKUP_DIR (FR-15)
+npm run purge -- --confirm    # hard-delete items soft-deleted over 90 days ago (FR-43)
+npm run watch -- <folder>     # a drop folder that ingests what lands in it (FR-10)
+npm run backfill:instagram -- <export> --as you@hauscustomhomes.com   # FR-2 worklist at /backfill
+```
+
+## Not built, and named rather than hidden
 
 | Missing | State |
 |---|---|
 | **R2 against a real bucket** | Driver written, not yet exercised. First `npm run verify -- --full` on R2 is the test. |
-| **Extension against live Instagram** | Built and unit-tested; not yet run on a real saved list from this machine. The scan relies on an `<img>` inside a link to `/p/`, `/reel/` or `/pin/`. |
-| **FR-18 eval gate** | No hand-labeled set yet. Until it exists, tag quality is an impression. |
-| **Role admin, board reordering, local mirror and cold copy** (FR-14, FR-15) | Roles change in SQL; boards keep insertion order; no mirror job yet. |
+| **Extension against live Instagram** | Built and unit-tested; not yet run on a real saved list from this machine. |
+| **A labelled golden set** | `evals/golden/labels.csv` is empty. Until the designer fills it and `npm run eval` passes, every AI tag is a suggestion. |
+| **Pinterest API, email ingest, OCR** (FR-1, FR-9, FR-24) | Need credentials or a large dependency; the extension, the watch folder and the phone cover the same needs. |
+| **pgvector** | Not needed below ~50k images; the upgrade is a documented step. |
 
 ## Rules
 

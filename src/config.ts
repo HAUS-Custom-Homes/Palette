@@ -27,6 +27,8 @@ export const config = {
   },
 
   storeDriver: (process.env.PALETTE_STORE_DRIVER ?? "local") as "local" | "r2",
+  /** FR-14. A directory HAUS controls that receives a verified copy of every original. */
+  mirrorDir: process.env.PALETTE_MIRROR_DIR || null,
   r2: {
     accountId: process.env.R2_ACCOUNT_ID ?? "",
     accessKeyId: process.env.R2_ACCESS_KEY_ID ?? "",
@@ -61,6 +63,8 @@ export const config = {
      * embeddings, search is lexical only.
      */
     embeddings: (process.env.PALETTE_EMBEDDINGS ?? "clip") as "clip" | "fake" | "off",
+    /** FR-18. Apply tags from facets that have not passed the eval gate. Off by default, on purpose. */
+    trustUngated: process.env.PALETTE_TRUST_UNGATED === "1",
     modelDir: process.env.PALETTE_MODEL_DIR ?? path.join(dataDir, "models"),
   },
 

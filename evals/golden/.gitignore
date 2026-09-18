@@ -1,0 +1,4 @@
+# HAUS reference images are private; only the labels travel with the repo.
+*
+!.gitignore
+!labels.csv

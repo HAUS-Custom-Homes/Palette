@@ -1,6 +1,9 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
-import { addToBoard, boardsForItem, createBoard, getBoard, listBoards, moveOnBoard, removeFromBoard, setBoardCover, setBoardPrivacy } from "@/boards/boards";
+import {
+  addToBoard, boardsForItem, createBoard, feedbackForBoard, getBoard, getSharedBoard, listBoards, moveOnBoard,
+  recordFeedback, removeFromBoard, setBoardCover, setBoardPrivacy, shareBoard, tokenCoversAsset, unshareBoard,
+} from "@/boards/boards";
 import { db } from "@/db/client";
 import { migrate } from "@/db/migrate";
 import { ingestBuffer } from "@/ingest/ingest";
@@ -68,6 +71,37 @@ describe("boards", () => {
     await setBoardCover(id, itemA, trevor.id);
     expect((await listBoards(trevor.id)).find((b) => b.id === id)!.coverSha).toBeTruthy();
     await setBoardCover(id, itemA, designer.id); // not the owner: ignored, no throw
+  });
+
+  it("FR-35 a share link is read-only, scoped to its board's images, records likes, and dies on expiry", async () => {
+    const id = await createBoard(trevor.id, "Client review");
+    await addToBoard(id, itemA, trevor.id);
+    const token = (await shareBoard(id, trevor.id, 30))!;
+    expect(token.length).toBeGreaterThan(16);
+    expect(await shareBoard(id, designer.id, 30)).toBeNull(); // not the owner
+
+    const shared = await getSharedBoard(token);
+    expect(shared!.items.map((i) => i.id)).toEqual([itemA]);
+    expect(await getSharedBoard("not-a-real-token-at-all")).toBeNull();
+
+    const d = await db();
+    const shaA = (await d.one<{ sha256: string }>(`SELECT a.sha256 FROM items i JOIN assets a ON a.id = i.asset_id WHERE i.id = $1`, [itemA]))!.sha256;
+    const shaB = (await d.one<{ sha256: string }>(`SELECT a.sha256 FROM items i JOIN assets a ON a.id = i.asset_id WHERE i.id = $1`, [itemB]))!.sha256;
+    expect(await tokenCoversAsset(token, shaA)).toBe(true);
+    expect(await tokenCoversAsset(token, shaB)).toBe(false); // not on this board
+
+    expect(await recordFeedback(token, itemA, "Sarah", "like")).toBe(true);
+    expect(await recordFeedback(token, itemB, "Sarah", "like")).toBe(false); // not on this board
+    expect(await recordFeedback(token, itemA, "Sarah", "like")).toBe(true); // idempotent per viewer
+    expect((await feedbackForBoard(id)).filter((f) => f.sentiment === "like").length).toBe(1);
+    expect((await getSharedBoard(token))!.items[0].likes).toBe(1);
+
+    await d.query(`UPDATE boards SET share_expires_at = now() - interval '1 minute' WHERE id = $1`, [id]);
+    expect(await getSharedBoard(token)).toBeNull();
+    expect(await tokenCoversAsset(token, shaA)).toBe(false);
+
+    await unshareBoard(id, trevor.id);
+    expect((await getBoard(id, trevor.id))!.shareToken).toBeNull();
   });
 
   it("refuses a nonsense name", async () => {

@@ -1,5 +1,6 @@
 import { PROMPT_VERSION, TAXONOMY_VERSION, config } from "@/config";
 import { db } from "@/db/client";
+import { passedFacets } from "./gates";
 import { reindexItem } from "@/search/index-item";
 import { slugify } from "@/taxonomy/seed-data";
 import type { TagResult } from "./tag-schema";
@@ -39,12 +40,18 @@ export async function applyTags(
 
   const facetByKey = new Map(facets.map((f) => [f.key, f]));
   const termBySlug = new Map(terms.map((t) => [`${t.facet_id}:${t.slug}`, t]));
+
+  // FR-18. A facet this model has not passed the gate on is written as
+  // "suggested": visible, reviewable, never filtered on until a person accepts
+  // it or the gate passes and the item is re-tagged.
+  const passed = await passedFacets(modelVersion);
+  const applied = (facetKey: string) => passed.has("*") || passed.has(facetKey);
   const humanTermIds = new Set(existing.filter((r) => r.source === "human").map((r) => r.term_id));
   const rejectedTermIds = new Set(existing.filter((r) => r.rejected).map((r) => r.term_id));
   const priorAiTermIds = new Set(existing.filter((r) => r.source === "ai").map((r) => r.term_id));
 
   // ---- resolve the model's answer into term ids -------------------------
-  const wanted = new Map<string, number>();
+  const wanted = new Map<string, { confidence: number; suggested: boolean }>();
   for (const [facetKey, rows] of Object.entries(result.facets)) {
     const facet = facetByKey.get(facetKey);
     if (!facet || !facet.ai_tagged || rows.length === 0) continue;
@@ -60,7 +67,8 @@ export async function applyTags(
       if (!term) continue; // outside the vocabulary; the schema should have prevented it
       if (rejectedTermIds.has(term.id)) continue; // FR-19: a human said no. That is final.
       if (humanTermIds.has(term.id)) continue; // owned by a human; leave it alone
-      wanted.set(term.id, Math.max(wanted.get(term.id) ?? 0, row.confidence));
+      const prev = wanted.get(term.id);
+      wanted.set(term.id, { confidence: Math.max(prev?.confidence ?? 0, row.confidence), suggested: !applied(facetKey) });
     }
   }
 
@@ -78,20 +86,21 @@ export async function applyTags(
       }
     }
 
-    for (const [termId, confidence] of wanted) {
+    for (const [termId, { confidence, suggested }] of wanted) {
       const rows = await tx.query(
         `INSERT INTO item_terms
-           (item_id, term_id, confidence, source, rejected,
+           (item_id, term_id, confidence, source, rejected, suggested,
             model_version, prompt_version, taxonomy_version)
-         VALUES ($1, $2, $3, 'ai', false, $4, $5, $6)
+         VALUES ($1, $2, $3, 'ai', false, $4, $5, $6, $7)
          ON CONFLICT (item_id, term_id) DO UPDATE SET
            confidence = excluded.confidence,
+           suggested = excluded.suggested,
            model_version = excluded.model_version,
            prompt_version = excluded.prompt_version,
            taxonomy_version = excluded.taxonomy_version
          WHERE item_terms.source = 'ai'
          RETURNING term_id`,
-        [itemId, termId, confidence, modelVersion, PROMPT_VERSION, TAXONOMY_VERSION],
+        [itemId, termId, confidence, suggested, modelVersion, PROMPT_VERSION, TAXONOMY_VERSION],
       );
       if (rows.length) added++;
     }
@@ -141,10 +150,10 @@ export async function setHumanTag(
   await d.transaction(async (tx) => {
     if (action === "add") {
       await tx.query(
-        `INSERT INTO item_terms (item_id, term_id, confidence, source, rejected, set_by, taxonomy_version)
-         VALUES ($1, $2, 1.0, 'human', false, $3, $4)
+        `INSERT INTO item_terms (item_id, term_id, confidence, source, rejected, suggested, set_by, taxonomy_version)
+         VALUES ($1, $2, 1.0, 'human', false, false, $3, $4)
          ON CONFLICT (item_id, term_id) DO UPDATE SET
-           source = 'human', confidence = 1.0, rejected = false, set_by = excluded.set_by,
+           source = 'human', confidence = 1.0, rejected = false, suggested = false, set_by = excluded.set_by,
            model_version = NULL, prompt_version = NULL`,
         [itemId, termId, userId, TAXONOMY_VERSION],
       );

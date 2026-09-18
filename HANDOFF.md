@@ -3,80 +3,94 @@ Last updated: 2026-09-18 on Trevor_Lenovo
 
 ## Current state
 
-Round 3 is done: **the browser extension and boards**, on top of the multi-user Phase 0 from
-round 2. Everything below was verified on this machine today.
+Rounds 3 and 4 are done on top of the multi-user Phase 0. The full REF-01 scope that can be
+built without Trevor's credentials is now built. What remains is deployment, real data, and the
+things that only a person can do (label the golden set, run the first real Instagram scan).
 
-Repos and folders are in their final names: this is **Palette**, the reference library, at
-`~/projects/Palette` and `HAUS-Custom-Homes/Palette`. The selections register is **The HausBuch**
-at `~/projects/HausBuch` and `HAUS-Custom-Homes/HausBuch`; its own code still calls itself Palette
-until a round in that repo renames it.
+This is **Palette**, the reference library, at `~/projects/Palette` and
+`HAUS-Custom-Homes/Palette`. The selections register is **The HausBuch** at
+`~/projects/HausBuch` and `HAUS-Custom-Homes/HausBuch`; its own code still calls itself Palette.
 
-### Round 3
-- **Extension** (`extension/`, WXT, MV3, builds for Chrome and Firefox): right-click save, toolbar
-  popup with the page's images and a haus picker, and the **collection scan**: on an Instagram
-  saved list or a Pinterest board it scrolls, collects one image per post, shows a review grid,
-  and imports what you keep. Images are fetched by the browser with the person's own cookies and
-  posted with their device token and full provenance (post URL, author, caption). Pure logic is
-  unit-tested (8 tests); typecheck clean; `npm run build` produces a valid manifest.
-  **Not yet driven against a live Instagram session from this machine.** The first real scan is
-  the test, and `extension/README.md` says so.
-- **Boards** (FR-34): `/boards`, `/boards/[id]`, and a Boards panel on every item. Team-visible
-  unless the owner makes one private. 3 tests.
-- Server: `/api/ingest` accepts provenance fields; `GET /api/me` and `GET /api/taxonomy` answer
-  to a device token so the extension can test itself and offer a haus.
-- Gate: `tsc` clean (root excludes `extension/`), **20 tests** at the root plus 8 in the
-  extension, integrity PASS.
+### Built since the last handoff (round 4)
+- **Embeddings and hybrid search** (FR-17 Layer A, FR-26, FR-31): CLIP ViT-B/32 in-process via
+  transformers.js; vectors as `real[]` so PGlite and hosted Postgres share one schema; an
+  in-process cosine index with a similarity floor; reciprocal rank fusion with the lexical
+  ranking; "more like this" by vector. `npm run embed` backfills, the tag worker embeds after
+  tagging, `npm run clip:check` proves the model runs. Weights cache in `data/models` (580MB).
+- **Bulk actions, keyboard, compare** (FR-30, FR-32, FR-36): multi-select in the grid with add
+  to board and set haus, `j k x space c esc /`, a compare tray at `/compare`.
+- **Boards, complete** (FR-33, FR-34, FR-35): reorder, cover, **smart boards** from "Save
+  search", and **client share links**: an unguessable expiring URL, a client-only page with no
+  way into the library, images served only with the token, per-image likes that come back to the
+  board. Verified with no session at all.
+- **Eval gate** (FR-18): `npm run eval` scores precision and recall per facet on the golden set
+  and records `facet_gates`. Until a facet passes, its AI tags are **suggested**: dashed, in
+  review, never filtered on, one click to accept. `PALETTE_TRUST_UNGATED=1` is the escape hatch
+  and the settings page says when it is on. With no eval run, everything is suggested. That is
+  the PRD's rule and it is strict on purpose.
+- **Role admin** at `/people`: owners change roles; the last owner cannot be demoted.
+- **Instagram export backfill** (FR-2): `npm run backfill:instagram` parses Meta's archive into
+  `/backfill`, a checklist that ticks itself when the extension clips a post.
+- **Operational tools**: `export` (FR-42, whole library as files + manifest + CSV), `mirror`
+  (FR-14, verified copy to a HAUS directory), `backup` (FR-15, database dump + manifest),
+  `purge` (FR-43, the only hard delete, dry-run by default), `watch` (FR-10, a drop folder).
+  Export, backup and purge were exercised here; mirror needs a target directory.
+- Round 3 before it: the **browser extension** (`extension/`) and boards.
 
-Bug found this round, worth remembering: the `haus` field arrives as a **slug** from every
-capture surface (dropdown, extension, Shortcut) but ingest treated it as a term id, so the
-in-app "any haus" dropdown had been silently broken too. `resolveOpenTermIds()` now accepts
-either, drops unknowns rather than failing the upload, and refuses closed facets. Covered by
-`tests/haus.test.ts`.
+Gate: `tsc` clean, **29 tests** at the root (fake embedder) plus 8 in the extension, integrity
+PASS. Every feature was driven in the browser or by curl before being called done.
 
-Known edge, not fixed: ingest is bytes-first and not one transaction. If a step after the asset
-insert fails (as the haus bug did), the image and item exist but the caller is told it failed;
-the next identical upload reports "duplicate" and completes the missing pieces. Acceptable by
-design (never lose bytes), but the error message could say "stored, tagging incomplete".
+### Bugs found and fixed this round
+- The `haus` field arrives as a slug from every capture surface but ingest treated it as an id
+  (round 3). `resolveOpenTermIds()` accepts either.
+- A CLIP query with no lexical hits returned the whole library ranked. Added a similarity floor
+  (0.21) below which the semantic half returns nothing.
+- `config.mirrorDir` had been dropped in the round-2 rewrite; restored.
 
-### Rounds 1 and 2, still true
-See README.md. Postgres via PGlite locally and hosted in prod; Google sign-in restricted to the
-Workspace; device tokens; per-person "Needs me" with quarantine; Haus facet human-only; R2 driver
-written but never run against a real bucket.
+### Not built, and why
+- **Pinterest API connector** (FR-1): needs a Pinterest developer app and standard-tier
+  approval. The extension already imports Pinterest boards from the browser, which is the same
+  images without the approval wait.
+- **Email ingest** (FR-9): needs an inbound mail provider. The watch folder and the phone cover
+  the same need.
+- **OCR** (FR-24): tesseract.js is a large dependency for a feature nobody has asked for yet.
+- **Region tagging, auto-board suggestions** (FR-45, FR-46): Phase 5.
+- **The HausBuch bridge** (FR-38, FR-39): a round in that repo.
+- **pgvector**: not needed below ~50k images; the step is in `docs/DEPLOY.md`.
 
 ## Next steps
 
-1. **Trevor: deploy** (`docs/DEPLOY.md`). Neon, R2, Google OAuth client, Vercel. Until then the
-   team cannot reach it. Sign in first so owner lands on you.
-2. **Load the extension in your Chrome** (`extension/README.md`), make a token named for the
-   computer, and run the first real scan on your Instagram saved list. Expect the scan to need
-   a selector tweak; it relies on `<img>` inside a link to `/p/`, `/reel/` or `/pin/`.
-3. `ANTHROPIC_API_KEY`, then `npm run tag -- --all`. Then the **FR-18 eval gate** before any
-   board goes in front of a client.
-4. First `npm run verify -- --full` against R2.
-5. Role admin page (roles are changed in SQL today). Multi-select in the grid for bulk add to
-   board. Embeddings (`VECTOR` markers in `src/search/query.ts`). Local mirror and cold copy
-   (FR-14, FR-15).
+1. **Trevor: deploy** (`docs/DEPLOY.md`). On Vercel, `PALETTE_EMBEDDINGS=off` and run
+   `npm run embed` from a machine with the model; the doc explains.
+2. **Load the extension** and run the first real scan on your Instagram saved list.
+3. **`ANTHROPIC_API_KEY`**, `npm run tag -- --all`, then **label the golden set** (the designer,
+   200 images, `evals/README.md`) and `npm run eval`. Until then every tag is a suggestion,
+   which is honest but means the facet rail is thin.
+4. First `npm run verify -- --full` against R2, and `npm run mirror` to the fileserver share.
+5. The HausBuch's in-code rename, in that repo.
 
 ## Open decisions / questions for me
 
-- Should a phone share ask "which haus?" (a third tap) or stay at two taps and rely on
-  "Needs me"? Built as two taps.
-- Board ordering: items keep insertion order; there is no drag-to-reorder yet. Needed for a
-  client-facing board, not for an internal one.
-- The HausBuch's in-code rename: its README, CLAUDE.md and UI still say Palette. A round in
-  that repo, with its own agent rules.
+- Suggested-by-default is strict. If the team would rather filter on unmeasured tags while the
+  golden set is being built, set `PALETTE_TRUST_UNGATED=1`; the settings page will say so.
+- The share page shows "HAUS" as plain text. MK-01 brand assets belong to The HausBuch's
+  design pipeline; when they are shareable, the client page should use them.
+- Smart boards resolve the filter live and cannot be shared with a client (a share is a fixed
+  set). Reasonable, but worth knowing.
 
 ## Gotchas
 
-- `extension/` has its own `package.json`, `node_modules` and test runner. The root `tsconfig`
-  and `vitest.config` exclude it on purpose; run its checks from inside the folder.
-- A root Bash `cd extension && ...` moves the session's working directory for later commands.
-  Use absolute paths or `cd` back.
+- `extension/` is its own package: run its checks inside it. The root typecheck and test runner
+  exclude it. A root Bash `cd extension && ...` moves the session's working directory.
+- `data/models` holds the CLIP weights (580MB, gitignored). First `npm run embed` or
+  `npm run clip:check` downloads them; the sandbox this was built in could not reach
+  `cdn.hf.co`, a normal machine can.
+- Tests run with `PALETTE_EMBEDDINGS=fake`; the fake embedder has no similarity floor.
 - `.env` holds `PALETTE_DEV_AUTH=1` and nothing secret. Gitignored regardless.
-- `data/` is the PGlite database and local store; deleting it is a full reset. Sessions signed
-  in before a reset are redirected to sign-in because their user id no longer exists.
-- The system user `system@palette.local` owns anything imported without `--as`.
-- `migrate()` runs on every boot and throws if any of the four triggers is missing.
-- Stopping the dev task can leave the child `node` on port 3200: `netstat -ano | grep :3200`,
-  then `taskkill //F //PID`.
+- `data/` is the PGlite database and local store; deleting it is a full reset. Signed-in
+  browsers are redirected to sign-in afterwards because their user id no longer exists.
+- `migrate()` runs on every boot and throws if any of the four triggers is missing. The DDL
+  file ends with `ADD COLUMN IF NOT EXISTS` lines for columns added after the first release;
+  keep adding there rather than editing the CREATE TABLE.
+- `npm run purge` is the only thing that deletes bytes. Dry run unless `--confirm`.
 - Port 3200. The HausBuch owns 3100 and 3101.
