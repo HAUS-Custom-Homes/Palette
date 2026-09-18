@@ -22,9 +22,9 @@ controlled HAUS vocabulary, and makes it findable in a second, by the whole team
 | Stack | Next.js 15, TypeScript, Postgres (PGlite locally, hosted in production), Auth.js, sharp, Anthropic SDK |
 | Runs on | This laptop with no Docker, no cloud, no API key. Deploys to Vercel + Neon + R2 (`docs/DEPLOY.md`) |
 | Sign-in | Google, restricted to `@hauscustomhomes.com`. First person in is owner |
-| Phones | iPhone via a two-tap Shortcut (`docs/SHORTCUT.md`), Android via the share sheet, both to `/api/ingest` |
+| Phones | iPhone via a two-tap Shortcut (`docs/SHORTCUT.md`), Android via the share sheet, and a **Capture** page that works with no signal: photos queue on the phone and upload later (FR-8) |
 | Desktop | Browser extension (`extension/`): right-click save, toolbar popup, and import of existing Instagram and Pinterest saves from your own session |
-| Tests | 32 at the root on real Postgres plus 8 in the extension, each defending a named requirement. `next build` clean |
+| Tests | 40 at the root on real Postgres plus 8 in the extension, each defending a named requirement. `next build` clean |
 
 ## Running it locally
 
@@ -48,6 +48,7 @@ survive that, by design and by test.
 
 ## How the team uses it
 
+- **Capture, even offline.** On a job site with no signal, the Capture page still opens; photos are kept on the phone with their haus and note and upload by themselves when signal returns.
 - **Capture.** Share, then Palette. Two taps from any app on a phone; drop or paste on desktop.
   The image is stored by hash before anything else happens, and tagged within a minute.
 - **Find.** One search box that understands both words and pictures: a lexical ranking over tags, synonyms and provenance is fused with a CLIP ranking of what the images look like, so "warm kitchen with a plaster hood" works even when no tag says so. Plus a facet rail: Haus, image type, space, element, material, style,
@@ -158,6 +159,7 @@ npm run backfill:instagram -- <export> --as you@hauscustomhomes.com   # FR-2 wor
 | **R2 against a real bucket** | Driver written, not yet exercised. First `npm run verify -- --full` on R2 is the test. |
 | **Extension against live Instagram** | Built and unit-tested; not yet run on a real saved list from this machine. |
 | **A labelled golden set** | `evals/golden/labels.csv` is empty. Until the designer fills it and `npm run eval` passes, every AI tag is a suggestion. |
+| **Offline on a real phone** | The service worker is proven by running the real `public/sw.js` in a test harness (8 tests). Browsers only allow service workers over HTTPS, so the first real-phone test needs the deployed host. |
 | **Pinterest API, email ingest, OCR** (FR-1, FR-9, FR-24) | Need credentials or a large dependency; the extension, the watch folder and the phone cover the same needs. |
 | **pgvector** | Not needed below ~50k images; the upgrade is a documented step. |
 

@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import { OfflineQueue } from "./ui/offline-queue";
 
 export const metadata: Metadata = {
   title: "Palette",
@@ -22,7 +23,11 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
-      <body>{children}</body>
+      <body>
+        {children}
+        {/* FR-8: registers the service worker and shows what is waiting on this phone. */}
+        <OfflineQueue />
+      </body>
     </html>
   );
 }

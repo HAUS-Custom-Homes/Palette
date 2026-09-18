@@ -48,6 +48,20 @@ the most reliable path there is.
 - Anything the tagger cannot handle after three tries lands on your **Needs me** list. The
   image is safe either way; only the tags are missing.
 
+## No signal (job sites, basements, the lake)
+
+Add Palette to your Home Screen (Safari, Share, **Add to Home Screen**) and open it once while
+online. From then on, **Capture** opens even with no signal: choose or take photos, pick a haus,
+and they are kept on the phone and upload by themselves.
+
+- **Android** uploads in the background the moment signal returns, even with Palette closed.
+- **iPhone** has no background upload for web apps. The photos upload the next time you open
+  Palette with a connection; a pill at the bottom shows how many are waiting.
+- The Shortcut above needs a connection, because Shortcuts cannot queue. With no signal, use
+  Capture in the Home Screen app instead.
+- Nothing is ever duplicated by a retry. The server stores by content, so sending the same photo
+  twice is one image.
+
 ## Android
 
 Nothing to build. Open Palette in Chrome, choose **Add to Home screen**. Palette then appears in

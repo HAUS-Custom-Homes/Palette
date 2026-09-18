@@ -58,6 +58,9 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
   search path until then. Tests run with `PALETTE_EMBEDDINGS=fake`.
 - Raw SQL uses `$1` placeholders through `db().query()` / `one()` / `transaction()`. Do not
   import a driver directly anywhere else.
+- **Every capture surface in the web app must POST to `/api/ingest` or `/share`.** That is what
+  the service worker intercepts for offline queueing (FR-8). A capture that posts anywhere else
+  is silently lost with no signal. `tests/sw.test.ts` runs the real `public/sw.js`.
 - **Middleware guards pages, never `/api`.** Every API route must authenticate itself (session,
   device token, cron secret or share token) and answer 401/403 in JSON. A new route that forgets
   is open to the world; a middleware rule that covers `/api` breaks every bearer-token client.

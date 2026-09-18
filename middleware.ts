@@ -16,6 +16,9 @@ export const config = {
     // too would redirect a cookie-less bearer call to the sign-in page before
     // the route could read its token, which is how the extension and The
     // HausBuch talk to Palette. s/ is the client-facing share page (FR-35).
-    "/((?!api/|s/|share|manifest.webmanifest|icons|_next/static|_next/image|favicon.ico).*)",
+    // sw.js and offline.html must load without a session: the worker updates
+    // itself in the background and the offline page is what a phone with no
+    // signal and an expired session still gets to see (FR-8).
+    "/((?!api/|s/|share|sw.js|offline.html|manifest.webmanifest|icons|_next/static|_next/image|favicon.ico).*)",
   ],
 };

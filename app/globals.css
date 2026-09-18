@@ -361,3 +361,19 @@ a { color: inherit; text-decoration: none; }
 .color-pick { display: flex; gap: 4px; align-items: center; }
 .color-pick input[type="color"] { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 2px; cursor: pointer; }
 textarea.search { font-family: var(--font); }
+
+/* ---------- offline capture (FR-8) ---------- */
+.offline-pill {
+  position: fixed; left: 50%; bottom: max(14px, env(safe-area-inset-bottom)); transform: translateX(-50%);
+  z-index: 20; max-width: calc(100vw - 24px);
+  padding: 9px 14px; border-radius: 999px; font-size: 12.5px;
+  background: var(--surface); color: var(--text); border: 1px solid var(--accent);
+  box-shadow: 0 6px 24px rgba(0,0,0,.35);
+}
+.offline-pill[data-online="false"] { border-color: var(--warn); }
+.offline-pill button { margin-left: 8px; border: 0; background: var(--accent); color: #17140e; border-radius: 999px; padding: 3px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.capture { display: flex; flex-direction: column; gap: 10px; }
+.capture .search { width: 100%; font-size: 16px; padding: 12px; } /* 16px stops iOS zooming on focus */
+.capture-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn.big { padding: 18px 12px; font-size: 15px; }
+@media (max-width: 860px) { .nav { overflow-x: auto; white-space: nowrap; gap: 14px; } .nav .who { display: none; } }

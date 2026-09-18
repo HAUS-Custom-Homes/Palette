@@ -35,6 +35,13 @@ This is **Palette**, the reference library, at `~/projects/Palette` and
   (FR-14, verified copy to a HAUS directory), `backup` (FR-15, database dump + manifest),
   `purge` (FR-43, the only hard delete, dry-run by default), `watch` (FR-10, a drop folder).
   Export, backup and purge were exercised here; mirror needs a target directory.
+- **Offline capture** (FR-8): `public/sw.js` intercepts every capture POST (`/share`,
+  `/api/ingest`); with no network it stores fields and photo bytes in IndexedDB, answers
+  "saved on this phone", and replays to `/api/ingest` on Background Sync (Android) or next open
+  (iOS). `/capture` is the phone-first page and the one page cached for offline. A pill shows
+  what is waiting. `tests/sw.test.ts` runs the real worker against a fake IndexedDB and a
+  switchable network (8 tests). **Not yet run on a real phone**: service workers need HTTPS, so
+  that waits for the deployed host; the embedded browser pane refuses to register any worker.
 - **Vocabulary admin** at `/taxonomy` (FR-16, FR-23): the model's proposed terms to add or
   reject, every term with usage, synonyms, retire and restore. The only way a closed facet grows.
 - **Notes, rating, hero, remove** on every item (FR-37, FR-43 soft delete). **Colour search**
@@ -44,7 +51,7 @@ This is **Palette**, the reference library, at `~/projects/Palette` and
 - **`next build` passes clean**: 14 routes, Edge-safe middleware, types valid.
 - Round 3 before it: the **browser extension** (`extension/`) and boards.
 
-Gate: `tsc` clean, `next build` clean, **32 tests** at the root (fake embedder) plus 8 in the extension, integrity
+Gate: `tsc` clean, `next build` clean, **40 tests** at the root (fake embedder) plus 8 in the extension, integrity
 PASS. Every feature was driven in the browser or by curl before being called done.
 
 ### Bugs found and fixed this round
@@ -107,5 +114,8 @@ PASS. Every feature was driven in the browser or by curl before being called don
 - `migrate()` runs on every boot and throws if any of the four triggers is missing. The DDL
   file ends with `ADD COLUMN IF NOT EXISTS` lines for columns added after the first release;
   keep adding there rather than editing the CREATE TABLE.
+- `public/sw.js` is plain JavaScript on purpose (no bundler touches it) and is tested as-is.
+  Bump `VERSION` in it when its caching changes. Photo bytes are stored as ArrayBuffers, not
+  Blobs, because iOS Safari has lost Blobs in IndexedDB before.
 - `npm run purge` is the only thing that deletes bytes. Dry run unless `--confirm`.
 - Port 3200. The HausBuch owns 3100 and 3101.

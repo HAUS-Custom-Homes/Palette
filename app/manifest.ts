@@ -20,6 +20,8 @@ export default function manifest(): MetadataRoute.Manifest {
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
       { src: "/icons/icon-512-maskable.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
     ],
+    // Long-press the home-screen icon: straight to saving, which also works offline (FR-8).
+    shortcuts: [{ name: "Save photos", short_name: "Save", url: "/capture", icons: [{ src: "/icons/icon-192.png", sizes: "192x192" }] }],
     share_target: {
       action: "/share",
       method: "POST",
