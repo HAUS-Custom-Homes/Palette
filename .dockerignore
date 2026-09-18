@@ -1,0 +1,13 @@
+node_modules
+.next
+.git
+data
+data-test
+demo-images
+extension
+evals/golden/*.jpg
+evals/golden/*.png
+.env
+.env.*
+!.env.example
+*.tsbuildinfo

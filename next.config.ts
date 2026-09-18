@@ -6,6 +6,10 @@ const nextConfig: NextConfig = {
   // `new URL(..., import.meta.url)` reaches fs.readFile as a URL object and
   // every database call fails with "path argument must be of type string".
   serverExternalPackages: ["sharp", "@electric-sql/pglite", "postgres", "@huggingface/transformers", "onnxruntime-node"],
+  // migrate() reads drizzle/*.sql at runtime with fs. Next only ships files it
+  // can see being imported, so without this a traced deployment (Vercel,
+  // standalone) boots and immediately fails with ENOENT on the schema.
+  outputFileTracingIncludes: { "/**": ["./drizzle/**"] },
   experimental: {
     serverActions: {
       // Folder imports and multi-file drops push large multipart bodies.

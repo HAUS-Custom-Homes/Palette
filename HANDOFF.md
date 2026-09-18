@@ -54,6 +54,16 @@ This is **Palette**, the reference library, at `~/projects/Palette` and
 Gate: `tsc` clean, `next build` clean, **40 tests** at the root (fake embedder) plus 8 in the extension, integrity
 PASS. Every feature was driven in the browser or by curl before being called done.
 
+### Deploy target changed: a container, not Vercel
+Vercel caps request bodies at 4.5MB (phone photos are 3 to 12MB), cannot hold the CLIP model,
+and its Hobby plan rejects a cron more frequent than daily. `docs/DEPLOY.md` now walks through
+**Railway** (Dockerfile in the repo, Postgres in the same project, R2 for images, a `/data`
+volume for the model). First boot migrates, verifies the triggers and seeds the vocabulary, so
+no command is run against production. `PALETTE_WORKER=1` (set in the Dockerfile) runs the tag
+queue in-process every 60s. `/api/healthz` is the unauthenticated liveness check. Verified
+locally in production mode against an empty database; the Dockerfile itself has not been built
+(no Docker on this machine), so the first Railway build is its test.
+
 ### Bugs found and fixed this round
 - The `haus` field arrives as a slug from every capture surface but ingest treated it as an id
   (round 3). `resolveOpenTermIds()` accepts either.
@@ -82,8 +92,7 @@ PASS. Every feature was driven in the browser or by curl before being called don
 
 ## Next steps
 
-1. **Trevor: deploy** (`docs/DEPLOY.md`). On Vercel, `PALETTE_EMBEDDINGS=off` and run
-   `npm run embed` from a machine with the model; the doc explains.
+1. **Trevor: deploy to Railway** (`docs/DEPLOY.md`, seven steps). Sign in first to become owner.
 2. **Load the extension** and run the first real scan on your Instagram saved list.
 3. **`ANTHROPIC_API_KEY`**, `npm run tag -- --all`, then **label the golden set** (the designer,
    200 images, `evals/README.md`) and `npm run eval`. Until then every tag is a suggestion,

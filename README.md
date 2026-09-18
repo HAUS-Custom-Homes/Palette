@@ -20,7 +20,7 @@ controlled HAUS vocabulary, and makes it findable in a second, by the whole team
 | | |
 |---|---|
 | Stack | Next.js 15, TypeScript, Postgres (PGlite locally, hosted in production), Auth.js, sharp, Anthropic SDK |
-| Runs on | This laptop with no Docker, no cloud, no API key. Deploys to Vercel + Neon + R2 (`docs/DEPLOY.md`) |
+| Runs on | This laptop with no Docker, no cloud, no API key. Deploys as one container (Railway) with Postgres and R2 (`docs/DEPLOY.md`) |
 | Sign-in | Google, restricted to `@hauscustomhomes.com`. First person in is owner |
 | Phones | iPhone via a two-tap Shortcut (`docs/SHORTCUT.md`), Android via the share sheet, and a **Capture** page that works with no signal: photos queue on the phone and upload later (FR-8) |
 | Desktop | Browser extension (`extension/`): right-click save, toolbar popup, and import of existing Instagram and Pinterest saves from your own session |

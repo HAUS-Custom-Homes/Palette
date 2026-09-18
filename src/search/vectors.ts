@@ -86,7 +86,8 @@ export async function embedItem(itemId: string, e: Embedder = embedder()): Promi
 
 /** Items that look like this one. */
 export async function similarByVector(itemId: string, limit = 12): Promise<Array<{ itemId: string; score: number }>> {
-  if (!embeddingsEnabled()) return [];
+  // Needs only stored vectors, never the model, so it works even where the
+  // model cannot run (PALETTE_EMBEDDINGS=off with vectors written elsewhere).
   const e = embedder();
   const d = await db();
   const row = await d.one<{ vector: number[] }>(

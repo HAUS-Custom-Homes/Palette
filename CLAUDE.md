@@ -61,6 +61,10 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
 - **Every capture surface in the web app must POST to `/api/ingest` or `/share`.** That is what
   the service worker intercepts for offline queueing (FR-8). A capture that posts anywhere else
   is silently lost with no signal. `tests/sw.test.ts` runs the real `public/sw.js`.
+- **Production is one always-on container** (`Dockerfile`), not serverless: uploads exceed
+  Vercel's 4.5MB cap and CLIP needs a disk. `boot()` migrates, checks the triggers, seeds an empty
+  database and, with `PALETTE_WORKER=1`, runs the tag queue every 60s. Keep first boot
+  command-free.
 - **Middleware guards pages, never `/api`.** Every API route must authenticate itself (session,
   device token, cron secret or share token) and answer 401/403 in JSON. A new route that forgets
   is open to the world; a middleware rule that covers `/api` breaks every bearer-token client.
