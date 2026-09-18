@@ -3,78 +3,80 @@ Last updated: 2026-09-18 on Trevor_Lenovo
 
 ## Current state
 
-Round 2 is done: **multi-user Phase 0**. The concept became a team tool with sign-in, per-person
-responsibility, phone capture, project tags, and a real Postgres schema. Everything below was
-verified on this machine today, in the browser and by test.
+Round 3 is done: **the browser extension and boards**, on top of the multi-user Phase 0 from
+round 2. Everything below was verified on this machine today.
 
-- Postgres everywhere. **PGlite** (Postgres 18 in-process, no Docker) for dev and tests under
-  `./data/pg`; hosted Postgres via `DATABASE_URL` in production. One schema, one set of PL/pgSQL
-  triggers, `drizzle/`. SQLite is gone.
-- **Google sign-in** restricted to `@hauscustomhomes.com` (Auth.js v5). First person in becomes
-  owner, everyone after is editor. A dev-only sign-in box (`PALETTE_DEV_AUTH=1`) is refused in
-  production.
-- **Phones.** Per-device tokens (shown once, stored hashed, revocable) on `/settings`.
-  `/api/ingest` takes a bearer token or a session. Android gets the PWA share target (`/share`);
-  iPhone gets the Shortcut in `docs/SHORTCUT.md`. Both paths proven in the browser today.
-- **Each person owns their images.** "Mine" filter, a "Needs me" page with two lists: images the
-  tagger gave up on after three tries (quarantine) and images with low-confidence tags. Nobody
-  sees anyone else's list.
-- **Haus facet** (`project`): open, human-only, never shown to the model. Created from any item
-  or at import (`--haus Hurst`). Filters combine: `?project=hurst&space=kitchen`.
-- **R2 driver** written (`src/storage/r2.ts`), same interface as local. **Not yet run against a
-  real bucket.**
-- Tagging runs three ways: `after()` in the ingest route, Vercel Cron on `/api/cron/tag`
-  (`vercel.json`), and `npm run tag`. Atomic claim with `FOR UPDATE SKIP LOCKED` so they never
-  double-tag.
-- `tsc` clean, **15/15 tests** on PGlite in memory, `npm run verify -- --full` PASS on 18 assets.
+Repos and folders are in their final names: this is **Palette**, the reference library, at
+`~/projects/Palette` and `HAUS-Custom-Homes/Palette`. The selections register is **The HausBuch**
+at `~/projects/HausBuch` and `HAUS-Custom-Homes/HausBuch`; its own code still calls itself Palette
+until a round in that repo renames it.
 
-Bugs found and fixed this round, worth remembering:
+### Round 3
+- **Extension** (`extension/`, WXT, MV3, builds for Chrome and Firefox): right-click save, toolbar
+  popup with the page's images and a haus picker, and the **collection scan**: on an Instagram
+  saved list or a Pinterest board it scrolls, collects one image per post, shows a review grid,
+  and imports what you keep. Images are fetched by the browser with the person's own cookies and
+  posted with their device token and full provenance (post URL, author, caption). Pure logic is
+  unit-tested (8 tests); typecheck clean; `npm run build` produces a valid manifest.
+  **Not yet driven against a live Instagram session from this machine.** The first real scan is
+  the test, and `extension/README.md` says so.
+- **Boards** (FR-34): `/boards`, `/boards/[id]`, and a Boards panel on every item. Team-visible
+  unless the owner makes one private. 3 tests.
+- Server: `/api/ingest` accepts provenance fields; `GET /api/me` and `GET /api/taxonomy` answer
+  to a device token so the extension can test itself and offer a haus.
+- Gate: `tsc` clean (root excludes `extension/`), **20 tests** at the root plus 8 in the
+  extension, integrity PASS.
 
-1. `auth.config.ts` imported `config.ts`, which imports `node:path`. Middleware runs on the Edge
-   runtime, so every route 500'd at boot. The edge half of auth now reads env directly and
-   imports nothing from Node. Rule added to CLAUDE.md.
-2. PGlite bundled by Next's server webpack passes its WASM path to `fs.readFile` as a `URL`
-   object and every query fails with "path argument must be of type string". Fixed by adding
-   `@electric-sql/pglite` and `postgres` to `serverExternalPackages`.
-3. Stopping the dev task leaves the child `node` process holding port 3200 and the database
-   files. Kill by port: `netstat -ano | grep :3200`, then `taskkill //F //PID`.
+Bug found this round, worth remembering: the `haus` field arrives as a **slug** from every
+capture surface (dropdown, extension, Shortcut) but ingest treated it as a term id, so the
+in-app "any haus" dropdown had been silently broken too. `resolveOpenTermIds()` now accepts
+either, drops unknowns rather than failing the upload, and refuses closed facets. Covered by
+`tests/haus.test.ts`.
+
+Known edge, not fixed: ingest is bytes-first and not one transaction. If a step after the asset
+insert fails (as the haus bug did), the image and item exist but the caller is told it failed;
+the next identical upload reports "duplicate" and completes the missing pieces. Acceptable by
+design (never lose bytes), but the error message could say "stored, tagging incomplete".
+
+### Rounds 1 and 2, still true
+See README.md. Postgres via PGlite locally and hosted in prod; Google sign-in restricted to the
+Workspace; device tokens; per-person "Needs me" with quarantine; Haus facet human-only; R2 driver
+written but never run against a real bucket.
 
 ## Next steps
 
-1. **Trevor: the four accounts** in `docs/DEPLOY.md` (Neon, R2, Google OAuth client, Vercel) and
-   the env vars into Vercel. Nothing in the code is waiting on anything else. Sign in first so
-   the owner role lands on the right person.
-2. **First real test against R2**: `npm run verify -- --full` with the R2 env. The driver is
-   untested until then.
-3. Set `ANTHROPIC_API_KEY` and run `npm run tag -- --all` for real vision tagging. Then build
-   the **FR-18 eval gate** before trusting any facet in front of a client.
-4. Browser extension (WXT): one-click clip, and the Instagram and Pinterest saved-posts backfill
-   in the user's own session. Everything it needs server-side (`/api/ingest`, tokens) exists.
-5. Embeddings (FR-17 Layer A). Every insertion point is marked `VECTOR` in `src/search/query.ts`.
-6. Boards UI. Schema exists, no pages yet.
+1. **Trevor: deploy** (`docs/DEPLOY.md`). Neon, R2, Google OAuth client, Vercel. Until then the
+   team cannot reach it. Sign in first so owner lands on you.
+2. **Load the extension in your Chrome** (`extension/README.md`), make a token named for the
+   computer, and run the first real scan on your Instagram saved list. Expect the scan to need
+   a selector tweak; it relies on `<img>` inside a link to `/p/`, `/reel/` or `/pin/`.
+3. `ANTHROPIC_API_KEY`, then `npm run tag -- --all`. Then the **FR-18 eval gate** before any
+   board goes in front of a client.
+4. First `npm run verify -- --full` against R2.
+5. Role admin page (roles are changed in SQL today). Multi-select in the grid for bulk add to
+   board. Embeddings (`VECTOR` markers in `src/search/query.ts`). Local mirror and cold copy
+   (FR-14, FR-15).
 
 ## Open decisions / questions for me
 
-- **Name**: built as Palette. Still `D-7`.
-- **Who tags the haus on a phone share?** Today a share lands with no haus and the person adds it
-  later from the item page. The Shortcut could ask "which haus?" with a menu, at the cost of a
-  third tap. Recommend leaving it at two taps and letting the "Needs me" habit cover it.
-- **Viewer role** exists in the schema and is enforced on writes, but nobody is a viewer yet and
-  there is no admin page to change roles. Change roles in SQL until there is.
-- **Hobby vs Pro on Vercel**: Hobby limits cron to daily. `after()` covers uploads, so it is fine
-  to start on Hobby; retries of quarantined items just wait for the daily run or `npm run tag`.
+- Should a phone share ask "which haus?" (a third tap) or stay at two taps and rely on
+  "Needs me"? Built as two taps.
+- Board ordering: items keep insertion order; there is no drag-to-reorder yet. Needed for a
+  client-facing board, not for an internal one.
+- The HausBuch's in-code rename: its README, CLAUDE.md and UI still say Palette. A round in
+  that repo, with its own agent rules.
 
 ## Gotchas
 
-- `.env` holds `PALETTE_DEV_AUTH=1` and nothing secret. It stays gitignored regardless.
-- `data/` and `data-test/` are gitignored. `data/pg` is the PGlite database; deleting it is a
-  full reset. The concept has no mirror and no cold copy yet (FR-14, FR-15 unbuilt).
-- The system user `system@palette.local` owns everything imported by tools without `--as`. Use
-  `--as trevor@hauscustomhomes.com` (after that person has signed in once) so imports land on the
-  right "Mine" and "Needs me".
-- `migrate()` runs on every boot and throws if any of the **four** triggers is missing.
-- Tests use `PALETTE_PGLITE=memory` and `./data-test`, set in `vitest.config.ts`.
-- The tagger tags the 1600px derivative, not the original.
-- Screenshots of the browser pane time out when the app window is behind another window; use
-  `get_page_text`.
-- Port 3200. The HausBuch is on 3100 and 3101.
+- `extension/` has its own `package.json`, `node_modules` and test runner. The root `tsconfig`
+  and `vitest.config` exclude it on purpose; run its checks from inside the folder.
+- A root Bash `cd extension && ...` moves the session's working directory for later commands.
+  Use absolute paths or `cd` back.
+- `.env` holds `PALETTE_DEV_AUTH=1` and nothing secret. Gitignored regardless.
+- `data/` is the PGlite database and local store; deleting it is a full reset. Sessions signed
+  in before a reset are redirected to sign-in because their user id no longer exists.
+- The system user `system@palette.local` owns anything imported without `--as`.
+- `migrate()` runs on every boot and throws if any of the four triggers is missing.
+- Stopping the dev task can leave the child `node` on port 3200: `netstat -ano | grep :3200`,
+  then `taskkill //F //PID`.
+- Port 3200. The HausBuch owns 3100 and 3101.

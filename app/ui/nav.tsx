@@ -5,6 +5,7 @@ export function Nav({ user, attention = 0 }: { user: User; attention?: number })
   return (
     <div className="nav">
       <Link href="/">Library</Link>
+      <Link href="/boards">Boards</Link>
       <Link href="/attention">
         Needs me{attention > 0 && <span className="pill">{attention}</span>}
       </Link>

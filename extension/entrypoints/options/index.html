@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Palette settings</title>
+    <meta name="manifest.open_in_tab" content="true" />
+    <link rel="stylesheet" href="../popup/style.css" />
+    <style>
+      body { width: auto; max-width: 560px; margin: 40px auto; padding: 0 20px; }
+      label { display: block; margin: 14px 0 4px; color: var(--muted); font-size: 12px; letter-spacing: .08em; text-transform: uppercase; }
+      input { width: 100%; font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--text); border-radius: 6px; padding: 9px 12px; }
+      input:focus { outline: none; border-color: var(--accent); }
+      p { color: var(--muted); }
+    </style>
+  </head>
+  <body>
+    <header style="padding-left:0"><h1>Palette</h1><span class="muted">settings</span></header>
+    <p>Where your Palette lives, and the token for this browser. Make a token under <b>Phone and settings</b> in Palette; name it for this computer.</p>
+    <label for="host">Palette host</label>
+    <input id="host" placeholder="https://palette.hauscustomhomes.com" />
+    <label for="token">Device token</label>
+    <input id="token" placeholder="plt_..." autocomplete="off" />
+    <div class="row" style="margin-top:14px">
+      <button id="save" class="primary">Save and test</button>
+      <span id="result" class="muted"></span>
+    </div>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

@@ -48,11 +48,17 @@ export default async function SettingsPage() {
         </div>
 
         <div className="panel">
-          <h3>Desktop</h3>
-          <p className="hint" style={{ margin: 0 }}>
-            Drop images on the library page, or paste an image URL. The browser extension for one-click clipping and
-            for importing your existing Instagram and Pinterest saves is the next round.
+          <h3>Desktop: the browser extension</h3>
+          <p className="hint" style={{ marginTop: 0 }}>
+            Right-click any image to save it, or use the toolbar button. On your Instagram saved list or a Pinterest
+            board it scans, lets you review, and imports what you keep, all from your own logged-in browser.
           </p>
+          <ol className="steps">
+            <li>Make a token above, named for this computer.</li>
+            <li>Load the extension (<code>extension/README.md</code> in the repo has the two commands).</li>
+            <li>Open its <b>Settings</b>, enter this Palette's address and the token, <b>Save and test</b>.</li>
+          </ol>
+          <p className="hint" style={{ margin: 0 }}>You can also drop images on the library page or paste an image URL there.</p>
         </div>
       </div>
     </div>

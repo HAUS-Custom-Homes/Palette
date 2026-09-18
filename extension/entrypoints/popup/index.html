@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Palette</title>
+    <link rel="stylesheet" href="./style.css" />
+  </head>
+  <body>
+    <header>
+      <h1>Palette</h1>
+      <span id="status" class="muted">checking...</span>
+    </header>
+    <main id="main">
+      <section id="single">
+        <div class="row">
+          <select id="haus"><option value="">any haus</option></select>
+          <button id="save-best" class="primary">Save this page's image</button>
+        </div>
+        <div id="candidates" class="thumbs"></div>
+      </section>
+      <section id="collection" hidden>
+        <p class="muted">This looks like a list of saves. Scan it, review, then import what you want. Everything is fetched by your browser, in your own session.</p>
+        <button id="scan">Scan saves on this page</button>
+        <div id="scan-status" class="muted"></div>
+        <div id="review" class="thumbs"></div>
+        <div class="row" id="import-row" hidden>
+          <button id="select-all">All</button>
+          <button id="select-none">None</button>
+          <button id="import" class="primary">Import selected</button>
+        </div>
+      </section>
+    </main>
+    <footer>
+      <a id="options" href="#">Settings</a>
+      <span id="result" class="muted"></span>
+    </footer>
+    <script type="module" src="./main.ts"></script>
+  </body>
+</html>

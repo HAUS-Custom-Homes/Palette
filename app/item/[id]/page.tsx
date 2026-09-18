@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { setHumanTag } from "@/ai/apply-tags";
 import { requireUser } from "@/auth";
+import { addToBoard, boardsForItem, removeFromBoard } from "@/boards/boards";
 import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
 import { requeue, runTagQueue } from "@/ingest/tag-worker";
@@ -60,6 +61,20 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
     revalidatePath(`/item/${itemId}`);
   }
 
+  async function board(formData: FormData) {
+    "use server";
+    const u = await requireUser();
+    const itemId = String(formData.get("itemId"));
+    const boardId = String(formData.get("boardId"));
+    if (!boardId) return;
+    if (formData.get("action") === "remove") await removeFromBoard(boardId, itemId, u.id);
+    else await addToBoard(boardId, itemId, u.id);
+    revalidatePath(`/item/${itemId}`);
+    revalidatePath(`/boards/${boardId}`);
+  }
+
+  const boards = await boardsForItem(id, user.id);
+
   const d = await db();
   const allTerms = await d.query<{ id: string; label: string; facetKey: string; facetLabel: string }>(
     `SELECT t.id, t.label, f.key AS "facetKey", f.label AS "facetLabel"
@@ -116,6 +131,33 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
               </form>
             </div>
           )}
+
+          <div className="panel">
+            <h3>Boards</h3>
+            {boards.on.map((b) => (
+              <span className="tag" key={b.id} data-src="human">
+                <Link href={`/boards/${b.id}`}>{b.name}</Link>
+                <form action={board} style={{ display: "inline" }}>
+                  <input type="hidden" name="itemId" value={id} />
+                  <input type="hidden" name="boardId" value={b.id} />
+                  <input type="hidden" name="action" value="remove" />
+                  <button type="submit" title="Remove from board">×</button>
+                </form>
+              </span>
+            ))}
+            {boards.available.length > 0 ? (
+              <form action={board} style={{ display: "flex", gap: 6, marginTop: boards.on.length ? 8 : 0 }}>
+                <input type="hidden" name="itemId" value={id} />
+                <select name="boardId" className="search" style={{ padding: "6px 8px", fontSize: 12 }} defaultValue="">
+                  <option value="" disabled>add to board...</option>
+                  {boards.available.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                </select>
+                <button className="btn" type="submit">add</button>
+              </form>
+            ) : boards.on.length === 0 ? (
+              <p className="hint" style={{ margin: 0 }}>No boards yet. <Link href="/boards">Make one.</Link></p>
+            ) : null}
+          </div>
 
           <div className="panel">
             <h3>Haus</h3>

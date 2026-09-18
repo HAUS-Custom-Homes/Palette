@@ -1,0 +1,20 @@
+{
+  "name": "palette-extension",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Palette clipper: save images and import existing saves from your own browser session.",
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "build:firefox": "wxt build -b firefox",
+    "zip": "wxt zip",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7",
+    "wxt": "^0.21.4"
+  }
+}

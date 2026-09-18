@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse, after } from "next/server";
+import { resolveOpenTermIds } from "@/ai/apply-tags";
 import { currentUser } from "@/auth";
 import { boot } from "@/lib/boot";
 import { resolveDeviceToken, type User } from "@/lib/users";
-import { ingestBuffer, ingestUrl } from "@/ingest/ingest";
+import { ingestBuffer, ingestUrl, type SourceInfo } from "@/ingest/ingest";
 import { runTagQueue } from "@/ingest/tag-worker";
 
 /**
@@ -34,7 +35,8 @@ export async function POST(req: NextRequest) {
     const body = (await req.json()) as { url?: string; source?: string; note?: string; haus?: string[] };
     if (!body.url) return NextResponse.json({ error: "url required" }, { status: 400 });
     try {
-      const res = await ingestUrl(body.url, user.id, { kind: (body.source as "web") ?? "web" }, { note: body.note, termIds: body.haus });
+      const termIds = await resolveOpenTermIds("project", body.haus ?? []);
+      const res = await ingestUrl(body.url, user.id, { kind: (body.source as "web") ?? "web" }, { note: body.note, termIds });
       after(() => runTagQueue(10).catch(() => {}));
       return NextResponse.json(res);
     } catch (err) {
@@ -47,7 +49,24 @@ export async function POST(req: NextRequest) {
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   const url = String(form.get("url") ?? "").trim();
   const note = String(form.get("note") ?? "").trim() || undefined;
-  const haus = form.getAll("haus").map(String).filter(Boolean);
+  // "hurst" from a dropdown or the extension, or an id from inside the app.
+  const haus = await resolveOpenTermIds("project", form.getAll("haus").map(String));
+
+  // Provenance, sent by the browser extension (FR-4). A clip that arrives
+  // without it is treated as a plain upload.
+  const field = (k: string) => String(form.get(k) ?? "").trim() || undefined;
+  const KINDS = new Set(["instagram", "pinterest", "web", "upload", "email", "watch_folder", "api", "share"]);
+  const kindField = field("source_kind");
+  const provenance = {
+    kind: (kindField && KINDS.has(kindField) ? kindField : undefined) as SourceInfo["kind"] | undefined,
+    sourceUrl: field("source_url"),
+    externalId: field("external_id"),
+    authorHandle: field("author_handle"),
+    authorUrl: field("author_url"),
+    captionText: field("caption_text")?.slice(0, 2000),
+    boardName: field("board_name"),
+    pageTitle: field("page_title")?.slice(0, 300),
+  };
 
   let saved = 0, duplicates = 0, variants = 0, failed = 0;
   let lastItemId: string | null = null;
@@ -60,10 +79,14 @@ export async function POST(req: NextRequest) {
         userId: user.id,
         filename: file.name,
         mime: file.type || undefined,
-        title: file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
+        title: provenance.pageTitle ?? file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
         note,
         termIds: haus,
-        source: { kind: "upload", externalId: `upload:${file.name}:${buf.byteLength}` },
+        source: {
+          ...provenance,
+          kind: provenance.kind ?? "upload",
+          externalId: provenance.externalId ?? `upload:${file.name}:${buf.byteLength}`,
+        },
       });
       lastItemId = res.itemId;
       if (res.duplicate) duplicates++; else if (res.variantOf) variants++; else saved++;
@@ -75,7 +98,7 @@ export async function POST(req: NextRequest) {
 
   if (url && /^https?:\/\//.test(url)) {
     try {
-      const res = await ingestUrl(url, user.id, { kind: "share" }, { note, termIds: haus });
+      const res = await ingestUrl(url, user.id, { ...provenance, kind: provenance.kind ?? "share" }, { note, termIds: haus });
       lastItemId = res.itemId;
       if (res.duplicate) duplicates++; else if (res.variantOf) variants++; else saved++;
     } catch (err) {

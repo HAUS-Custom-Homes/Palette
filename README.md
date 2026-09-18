@@ -15,7 +15,7 @@ controlled HAUS vocabulary, and makes it findable in a second, by the whole team
 
 ---
 
-## Status: Phase 0, multi-user
+## Status: Phase 0 plus extension and boards
 
 | | |
 |---|---|
@@ -23,7 +23,8 @@ controlled HAUS vocabulary, and makes it findable in a second, by the whole team
 | Runs on | This laptop with no Docker, no cloud, no API key. Deploys to Vercel + Neon + R2 (`docs/DEPLOY.md`) |
 | Sign-in | Google, restricted to `@hauscustomhomes.com`. First person in is owner |
 | Phones | iPhone via a two-tap Shortcut (`docs/SHORTCUT.md`), Android via the share sheet, both to `/api/ingest` |
-| Tests | 15 passing on real Postgres, each defending a named requirement |
+| Desktop | Browser extension (`extension/`): right-click save, toolbar popup, and import of existing Instagram and Pinterest saves from your own session |
+| Tests | 20 at the root on real Postgres plus 8 in the extension, each defending a named requirement |
 
 ## Running it locally
 
@@ -51,6 +52,7 @@ survive that, by design and by test.
   The image is stored by hash before anything else happens, and tagged within a minute.
 - **Find.** One search box plus a facet rail: Haus, image type, space, element, material, style,
   color. Counts respond to the active filter. Any search is a URL you can send.
+- **Curate.** Boards: a haus, a room, a meeting. Team-visible unless the owner makes one private.
 - **Own.** "Mine" shows what you saved. "Needs me" is your list and nobody else's: images the
   tagger gave up on, and tags it was unsure about. Nothing on it is anyone else's job.
 - **Grow.** Anyone can add a haus. Nobody can add a material or a style by typing one; those grow
@@ -103,7 +105,9 @@ src/ai/        Tagger, taxonomy-to-schema, the FR-19 writer, open-facet terms
 src/search/    tsvector search, facet counts, per-user views, quarantine
 src/auth*.ts   Auth.js: edge-safe config, DB-backed callbacks
 src/lib/       users, device tokens, boot
-app/           library, item, attention, settings, ingest, share, cron, asset, tokens
+app/           library, item, boards, attention, settings, ingest, share, cron, asset, tokens, me, taxonomy
+src/boards/    boards
+extension/     the WXT browser extension, its own package (see extension/README.md)
 tools/         seed, import, clip, retag, verify, migrate, demo, icons
 tests/         the guarantees
 docs/          REF-01-PRD.md, DEPLOY.md, SHORTCUT.md
@@ -114,10 +118,10 @@ docs/          REF-01-PRD.md, DEPLOY.md, SHORTCUT.md
 | Missing | State |
 |---|---|
 | **R2 against a real bucket** | Driver written, not yet exercised. First `npm run verify -- --full` on R2 is the test. |
-| **Browser extension** (FR-4) | One-click clip and the Instagram/Pinterest saved-posts backfill in the user's own session. Server side is ready. |
+| **Extension against live Instagram** | Built and unit-tested; not yet run on a real saved list from this machine. The scan relies on an `<img>` inside a link to `/p/`, `/reel/` or `/pin/`. |
 | **Image embeddings** (FR-17 Layer A) | Semantic search is lexical only; "more like this" uses shared tags. Insertion points marked `VECTOR`. |
 | **FR-18 eval gate** | No hand-labeled set yet. Until it exists, tag quality is an impression. |
-| **Boards UI, role admin, local mirror and cold copy** (FR-14, FR-15) | Schema in place, no pages or jobs. |
+| **Role admin, board reordering, local mirror and cold copy** (FR-14, FR-15) | Roles change in SQL; boards keep insertion order; no mirror job yet. |
 
 ## Rules
 

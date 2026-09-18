@@ -28,8 +28,8 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
 `src/derive/` sharp, blurhash, perceptual hashes · `src/ingest/` pipeline, dedupe, tag queue ·
 `src/ai/` Tagger, taxonomy-to-schema, the FR-19 writer · `src/taxonomy/` vocabulary seed ·
 `src/search/` tsvector search, facets, per-user views · `src/auth.ts` + `src/auth.config.ts` ·
-`src/lib/users.ts` people and device tokens · `app/` pages and routes · `tools/` CLIs ·
-`tests/` the guarantees
+`src/lib/users.ts` people and device tokens · `src/boards/` boards · `app/` pages and routes ·
+`tools/` CLIs · `tests/` the guarantees · `extension/` the WXT browser extension, its own package
 
 ## Rules
 - **FR-19 is the rule the product depends on.** A tagging run may only touch rows where
@@ -56,4 +56,9 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
 - `.env` holds credentials. Gitignored, never printed, pasted or committed. Trevor enters every
   production secret himself.
 - Agents and tests work against `./data-test` and `PALETTE_PGLITE=memory`, never `./data`.
+- `extension/` is its own package: run `npm install`, `npx tsc --noEmit`, `npm test` and `npm run build`
+  inside it. The root typecheck and test runner exclude it. Never `cd extension` in a root command
+  without coming back.
+- The extension never signs in anywhere. It reads the page the person has open and fetches with
+  their own cookies. Keep it that way (REF-01 R-1).
 - Port 3200. The HausBuch owns 3100 and 3101.

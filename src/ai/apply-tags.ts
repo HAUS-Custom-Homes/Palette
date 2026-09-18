@@ -206,6 +206,31 @@ export async function createOpenTerm(
   return { termId: row!.id, created: true };
 }
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * Callers name a haus by slug (the dropdown, the extension, the Shortcut) or
+ * by id (internal). Both are accepted; unknown slugs are dropped rather than
+ * failing the whole upload, because losing a haus tag is recoverable and
+ * losing an image is not. Only open facets are resolvable this way.
+ */
+export async function resolveOpenTermIds(facetKey: string, values: string[]): Promise<string[]> {
+  const clean = values.map((v) => v.trim()).filter(Boolean);
+  if (!clean.length) return [];
+  const d = await db();
+  const ids = clean.filter((v) => UUID.test(v));
+  const slugs = clean.filter((v) => !UUID.test(v)).map(slugify);
+  if (slugs.length) {
+    const rows = await d.query<{ id: string }>(
+      `SELECT t.id FROM taxonomy_terms t JOIN taxonomy_facets f ON f.id = t.facet_id
+        WHERE f.key = $1 AND f.is_open = true AND t.status = 'active' AND t.slug = ANY($2::text[])`,
+      [facetKey, slugs],
+    );
+    ids.push(...rows.map((r) => r.id));
+  }
+  return [...new Set(ids)];
+}
+
 /** FR-23. Items carrying a tag the model was not sure about. */
 export async function needsReview(itemId: string): Promise<boolean> {
   const d = await db();
