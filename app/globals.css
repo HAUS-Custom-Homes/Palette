@@ -358,3 +358,6 @@ a { color: inherit; text-decoration: none; }
 .like-pill { margin-left: 6px; color: var(--accent); font-size: 11px; }
 .tag[data-suggested="true"] { border-style: dashed; border-color: var(--accent-dim); }
 .tag[data-suggested="true"] .conf { color: var(--accent); }
+.color-pick { display: flex; gap: 4px; align-items: center; }
+.color-pick input[type="color"] { width: 34px; height: 34px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); padding: 2px; cursor: pointer; }
+textarea.search { font-family: var(--font); }

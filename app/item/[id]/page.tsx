@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { setHumanTag } from "@/ai/apply-tags";
 import { requireUser } from "@/auth";
@@ -90,6 +90,31 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
   const job = data.job;
   const isMine = item.created_by === user.id;
 
+  // FR-37, FR-43. Notes and rating are anyone's; removal is the owner's (or an owner's).
+  async function edit(formData: FormData) {
+    "use server";
+    const u = await requireUser();
+    const itemId = String(formData.get("itemId"));
+    const d = await db();
+    const what = String(formData.get("what"));
+    if (what === "note") {
+      const rating = Number(formData.get("rating") || 0) || null;
+      await d.query(`UPDATE items SET note = $1, rating = $2, is_hero = $3 WHERE id = $4`, [
+        String(formData.get("note") ?? "").trim().slice(0, 2000) || null, rating, formData.get("hero") === "on", itemId,
+      ]);
+      const { reindexItem } = await import("@/search/index-item");
+      await reindexItem(itemId);
+      revalidatePath(`/item/${itemId}`);
+    } else if (what === "remove") {
+      const owner = await d.one<{ created_by: string }>(`SELECT created_by FROM items WHERE id = $1`, [itemId]);
+      if (owner && (owner.created_by === u.id || u.role === "owner")) {
+        await d.query(`UPDATE items SET deleted_at = now() WHERE id = $1`, [itemId]);
+        await d.query(`INSERT INTO audit_events (actor_id, entity, entity_id, action) VALUES ($1, 'item', $2, 'soft_deleted')`, [u.id, itemId]);
+        redirect("/");
+      }
+    }
+  }
+
   return (
     <div>
       <Nav user={user} />
@@ -133,6 +158,24 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
               </form>
             </div>
           )}
+
+          <div className="panel">
+            <h3>Notes</h3>
+            <form action={edit}>
+              <input type="hidden" name="itemId" value={id} />
+              <input type="hidden" name="what" value="note" />
+              <textarea name="note" className="search" rows={3} defaultValue={String(item.note ?? "")} placeholder="Why this one. Searchable." style={{ width: "100%", resize: "vertical", fontSize: 12.5 }} />
+              <div style={{ display: "flex", gap: 10, alignItems: "center", marginTop: 8, flexWrap: "wrap" }}>
+                <label className="hint">Rating
+                  <select name="rating" className="search" defaultValue={String(item.rating ?? "")} style={{ marginLeft: 6, padding: "4px 8px", fontSize: 12 }}>
+                    <option value="">none</option>{[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{"★".repeat(n)}</option>)}
+                  </select>
+                </label>
+                <label className="hint"><input type="checkbox" name="hero" defaultChecked={Boolean(item.is_hero)} /> hero image</label>
+                <button className="btn" type="submit">Save</button>
+              </div>
+            </form>
+          </div>
 
           <div className="panel">
             <h3>Boards</h3>
@@ -257,6 +300,13 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
               <dt>original</dt><dd><a href={`/api/asset/${item.sha256}/original`} target="_blank" rel="noreferrer">download untouched bytes</a></dd>
             </dl>
             <p className="hint" style={{ margin: "8px 0 0" }}>Immutable and addressed by its own hash. The source can go offline without touching this.</p>
+            {(isMine || user.role === "owner") && (
+              <form action={edit} style={{ marginTop: 10 }}>
+                <input type="hidden" name="itemId" value={id} />
+                <input type="hidden" name="what" value="remove" />
+                <button className="btn" type="submit" title="Hidden from the library. The bytes stay for 90 days, then npm run purge.">Remove from library</button>
+              </form>
+            )}
           </div>
 
           {(data.variants as Array<{ id: string; sha256: string }>).length > 0 && (

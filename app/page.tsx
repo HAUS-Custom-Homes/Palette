@@ -27,11 +27,13 @@ function parse(q: Query, facetKeys: string[], userId: string): SearchParams {
     facets,
     reviewOnly: q.review === "1",
     ownerId: q.mine === "1" ? userId : undefined,
+    sinceDays: q.since === "7" ? 7 : q.since === "30" ? 30 : undefined,
+    nearColor: typeof q.near === "string" && /^#?[0-9a-f]{6}$/i.test(q.near) ? q.near : undefined,
     limit: 120,
   };
 }
 
-function hrefWith(current: SearchParams, patch: { facetKey?: string; slug?: string; mine?: boolean; review?: boolean }) {
+function hrefWith(current: SearchParams, patch: { facetKey?: string; slug?: string; mine?: boolean; review?: boolean; since?: number | null; color?: string | null }) {
   const next = { ...current.facets };
   if (patch.facetKey && patch.slug) {
     const on = next[patch.facetKey]?.includes(patch.slug);
@@ -43,8 +45,12 @@ function hrefWith(current: SearchParams, patch: { facetKey?: string; slug?: stri
   if (current.q) params.set("q", current.q);
   const review = patch.review ?? current.reviewOnly;
   const mine = patch.mine ?? Boolean(current.ownerId);
+  const since = patch.since === undefined ? current.sinceDays : patch.since;
+  const color = patch.color === undefined ? current.nearColor : patch.color;
   if (review) params.set("review", "1");
   if (mine) params.set("mine", "1");
+  if (since) params.set("since", String(since));
+  if (color) params.set("near", color.replace("#", ""));
   for (const [k, v] of Object.entries(next)) if (v.length) params.set(k, v.join(","));
   const s = params.toString();
   return s ? `/?${s}` : "/";
@@ -72,7 +78,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
   const mode = taggerMode();
   const pending = (queue.queued ?? 0) + (queue.failed ?? 0) + (queue.running ?? 0);
   const mine = Boolean(params.ownerId);
-  const anyFilter = Boolean(params.q || params.reviewOnly || mine || Object.values(params.facets ?? {}).some((v) => v.length));
+  const anyFilter = Boolean(params.q || params.reviewOnly || mine || params.sinceDays || params.nearColor || Object.values(params.facets ?? {}).some((v) => v.length));
   const attention = s.myQuarantined + s.myReview;
 
   return (
@@ -113,7 +119,16 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
                    placeholder="Search: white oak kitchen, master bath, hurst..." />
             {Object.entries(params.facets ?? {}).map(([k, v]) => v.length ? <input key={k} type="hidden" name={k} value={v.join(",")} /> : null)}
             {mine && <input type="hidden" name="mine" value="1" />}
+            {params.sinceDays && <input type="hidden" name="since" value={String(params.sinceDays)} />}
+            {params.nearColor && <input type="hidden" name="near" value={params.nearColor.replace("#", "")} />}
           </form>
+          <form className="color-pick" title="FR-25: images whose dominant colours come near this one">
+            {Object.entries(params.facets ?? {}).map(([k, v]) => v.length ? <input key={k} type="hidden" name={k} value={v.join(",")} /> : null)}
+            {params.q && <input type="hidden" name="q" value={params.q} />}
+            <input type="color" name="near" defaultValue={params.nearColor ? `#${params.nearColor.replace("#", "")}` : "#c8a76a"} onChange={undefined} />
+            <button className="btn" type="submit">Colour</button>
+          </form>
+          <Link className="btn" href={hrefWith(params, { since: params.sinceDays === 7 ? null : 7 })} data-primary={params.sinceDays === 7}>New this week</Link>
           <Link className="btn" href={hrefWith(params, { mine: !mine })} data-primary={mine}>Mine</Link>
           <Link className="btn" href={hrefWith(params, { review: !params.reviewOnly })} data-primary={params.reviewOnly}>
             Review{s.needsReview > 0 ? ` (${s.needsReview})` : ""}

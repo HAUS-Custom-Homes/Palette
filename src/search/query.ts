@@ -21,9 +21,39 @@ export type SearchParams = {
   reviewOnly?: boolean;
   /** Restrict to items this user saved. */
   ownerId?: string;
+  /** Only items captured in the last N days ("new this week"). */
+  sinceDays?: number;
+  /** FR-25. A hex colour; items whose dominant palette comes near it. */
+  nearColor?: string;
+  /** Internal: nearColor resolved to item ids. */
+  colorIds?: string[];
   limit?: number;
   offset?: number;
 };
+
+/** FR-25. Which items have a dominant colour within reach of the one asked for. */
+async function idsNearColor(hex: string): Promise<string[] | null> {
+  const m = /^#?([0-9a-f]{6})$/i.exec(hex.trim());
+  if (!m) return null;
+  const want = [parseInt(m[1].slice(0, 2), 16), parseInt(m[1].slice(2, 4), 16), parseInt(m[1].slice(4, 6), 16)];
+  const d = await db();
+  const rows = await d.query<{ id: string; colors: Array<{ r: number; g: number; b: number }> | null }>(
+    `SELECT i.id, a.dominant_colors AS colors FROM items i JOIN assets a ON a.id = i.asset_id
+      WHERE i.deleted_at IS NULL AND i.variant_of IS NULL AND a.dominant_colors IS NOT NULL`,
+  );
+  // Weighted RGB distance ("redmean"), close enough to perceptual for a filter
+  // and needs no LAB conversion. 80 is roughly "the same family of colour".
+  const dist = (c: { r: number; g: number; b: number }) => {
+    const rm = (c.r + want[0]) / 2;
+    const dr = c.r - want[0], dg = c.g - want[1], db = c.b - want[2];
+    return Math.sqrt((2 + rm / 256) * dr * dr + 4 * dg * dg + (2 + (255 - rm) / 256) * db * db);
+  };
+  return rows
+    .map((r) => ({ id: r.id, best: Math.min(...(r.colors ?? []).slice(0, 3).map(dist), Infinity) }))
+    .filter((r) => r.best <= 80)
+    .sort((a, b) => a.best - b.best)
+    .map((r) => r.id);
+}
 
 export type ItemRow = {
   id: string;
@@ -84,6 +114,16 @@ function buildWhere(p: SearchParams, startAt = 1, opts: { skipText?: boolean } =
     params.push(p.ownerId);
   }
 
+  if (p.sinceDays && p.sinceDays > 0) {
+    wheres.push(`i.captured_at > now() - ($${n++} || ' days')::interval`);
+    params.push(String(Math.min(365, Math.floor(p.sinceDays))));
+  }
+
+  if (p.colorIds) {
+    wheres.push(`i.id = ANY($${n++}::uuid[])`);
+    params.push(p.colorIds);
+  }
+
   return { sql: wheres.join("\n AND "), params, next: n };
 }
 
@@ -99,10 +139,15 @@ const ITEM_SELECT = `
     JOIN assets a ON a.id = i.asset_id
     LEFT JOIN users u ON u.id = i.created_by`;
 
-export async function search(p: SearchParams): Promise<{ items: ItemRow[]; total: number }> {
+export async function search(p0: SearchParams): Promise<{ items: ItemRow[]; total: number }> {
   const d = await db();
-  const limit = Math.min(p.limit ?? 60, 200);
-  const offset = p.offset ?? 0;
+  const limit = Math.min(p0.limit ?? 60, 200);
+  const offset = p0.offset ?? 0;
+  // Colour is resolved to ids once, up front, so every branch below and the
+  // facet counts see the same restriction.
+  const colorIds = p0.nearColor ? await idsNearColor(p0.nearColor) : null;
+  const p: SearchParams = { ...p0, colorIds: colorIds ?? undefined };
+  if (p0.nearColor && (!colorIds || colorIds.length === 0)) return { items: [], total: 0 };
 
   // ---- with a query: two rankings, fused ----------------------------------
   if (p.q?.trim()) {
@@ -115,7 +160,16 @@ export async function search(p: SearchParams): Promise<{ items: ItemRow[]; total
       [...lex.params, toTsQuery(p.q)],
     );
     const semantic = await searchByText(p.q, 200);
-    const fused = fuse([lexical.map((r) => r.id), semantic.map((s) => s.itemId)]);
+    // Exact matches first, in rank order, then what only the picture matched.
+    // Rank fusion interleaves the two, which reads as noise when someone typed
+    // a specific word: a note that says "proportion" should come before eleven
+    // images that merely look proportionate. fuse() is kept for the case where
+    // both lists are long and neither is exact, which is the semantic query.
+    const lexIds = lexical.map((r) => r.id);
+    const semIds = semantic.map((s) => s.itemId);
+    const fused = lexIds.length && lexIds.length <= 5
+      ? [...lexIds, ...semIds.filter((id) => !lexIds.includes(id))]
+      : fuse([lexIds, semIds]);
     if (!fused.length) return { items: [], total: 0 };
 
     // Filters other than the text apply to the fused list.
@@ -155,8 +209,10 @@ export type FacetCount = {
  * truth about what clicking next would do, with each facet's own selection
  * removed so multi-select within a facet stays additive.
  */
-export async function facetCounts(p: SearchParams): Promise<FacetCount[]> {
+export async function facetCounts(p0: SearchParams): Promise<FacetCount[]> {
   const d = await db();
+  const colorIds = p0.nearColor ? await idsNearColor(p0.nearColor) : null;
+  const p: SearchParams = { ...p0, colorIds: colorIds ?? undefined };
   const facets = await d.query<{ id: string; key: string; label: string; is_multi: boolean; is_open: boolean }>(
     `SELECT id, key, label, is_multi, is_open FROM taxonomy_facets ORDER BY sort_order`,
   );
