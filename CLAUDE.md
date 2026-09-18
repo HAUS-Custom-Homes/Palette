@@ -58,6 +58,11 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
   search path until then. Tests run with `PALETTE_EMBEDDINGS=fake`.
 - Raw SQL uses `$1` placeholders through `db().query()` / `one()` / `transaction()`. Do not
   import a driver directly anywhere else.
+- **Middleware guards pages, never `/api`.** Every API route must authenticate itself (session,
+  device token, cron secret or share token) and answer 401/403 in JSON. A new route that forgets
+  is open to the world; a middleware rule that covers `/api` breaks every bearer-token client.
+- URL parameters on the library page must never reuse a facet key (`color`, `space`, `style`...):
+  `parse()` reads every facet key as a filter. Colour search is `?near=` for that reason.
 - Each person owns their images. Quarantine and review lists are filtered by `created_by`.
   Never build a page that shows one person another person's "Needs me".
 - Edit `.ts`, `.tsx` and `.sql` with the Edit/Write tools, never through shell heredocs or `sed`.

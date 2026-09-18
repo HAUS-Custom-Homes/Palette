@@ -24,7 +24,7 @@ controlled HAUS vocabulary, and makes it findable in a second, by the whole team
 | Sign-in | Google, restricted to `@hauscustomhomes.com`. First person in is owner |
 | Phones | iPhone via a two-tap Shortcut (`docs/SHORTCUT.md`), Android via the share sheet, both to `/api/ingest` |
 | Desktop | Browser extension (`extension/`): right-click save, toolbar popup, and import of existing Instagram and Pinterest saves from your own session |
-| Tests | 29 at the root on real Postgres plus 8 in the extension, each defending a named requirement |
+| Tests | 32 at the root on real Postgres plus 8 in the extension, each defending a named requirement. `next build` clean |
 
 ## Running it locally
 
@@ -57,7 +57,8 @@ survive that, by design and by test.
 - **Trust the tags, measurably.** A model's tags on a facet are applied only after `npm run eval` records a pass on the designer's golden set. Until then they are suggestions: dashed, reviewable, never filtered on.
 - **Own.** "Mine" shows what you saved. "Needs me" is your list and nobody else's: images the
   tagger gave up on, and tags it was unsure about. Nothing on it is anyone else's job.
-- **Grow.** Anyone can add a haus. Nobody can add a material or a style by typing one; those grow
+- **Remember why.** A note, a rating and a hero flag on any image; notes are searchable. Search by colour from the picker, or see what the team added this week.
+- **Grow.** The Vocabulary page is the ten-minutes-a-week job: the model's proposed words, add or reject, plus synonyms and retire for every term. Anyone can add a haus. Nobody can add a material or a style by typing one; those grow
   through the model's proposals and a human decision, which is what keeps one word per tile.
 
 ## The five things worth understanding
@@ -122,6 +123,19 @@ extension/     the WXT browser extension, its own package (see extension/README.
 tools/         seed, import, clip, retag, verify, migrate, demo, icons
 tests/         the guarantees
 docs/          REF-01-PRD.md, DEPLOY.md, SHORTCUT.md
+```
+
+## API, for The HausBuch and anything else inside the wall
+
+Session or device token (`Authorization: Bearer plt_...`).
+
+```
+GET  /api/items?q=&project=&space=&material=&near=hex&limit=    hybrid search, JSON
+GET  /api/items/:id                                              one item with tags and provenance
+GET  /api/taxonomy                                               the live vocabulary
+GET  /api/health                                                 counts, queue, embeddings, spend, last integrity scrub
+GET  /api/me                                                     who this token is
+POST /api/ingest                                                 files or url, with provenance and haus
 ```
 
 ## Tools

@@ -11,7 +11,11 @@ export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
   matcher: [
-    // api/asset checks its own session or share token (FR-35); s/ and api/s/ are the client-facing share surface.
-    "/((?!api/auth|api/ingest|api/cron|api/asset|api/s/|s/|share|manifest.webmanifest|icons|_next/static|_next/image|favicon.ico).*)",
+    // Pages only. Every /api route authenticates itself (session, device token,
+    // cron secret or share token) and answers 401 in JSON. Guarding them here
+    // too would redirect a cookie-less bearer call to the sign-in page before
+    // the route could read its token, which is how the extension and The
+    // HausBuch talk to Palette. s/ is the client-facing share page (FR-35).
+    "/((?!api/|s/|share|manifest.webmanifest|icons|_next/static|_next/image|favicon.ico).*)",
   ],
 };

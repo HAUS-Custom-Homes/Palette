@@ -35,9 +35,16 @@ This is **Palette**, the reference library, at `~/projects/Palette` and
   (FR-14, verified copy to a HAUS directory), `backup` (FR-15, database dump + manifest),
   `purge` (FR-43, the only hard delete, dry-run by default), `watch` (FR-10, a drop folder).
   Export, backup and purge were exercised here; mirror needs a target directory.
+- **Vocabulary admin** at `/taxonomy` (FR-16, FR-23): the model's proposed terms to add or
+  reject, every term with usage, synonyms, retire and restore. The only way a closed facet grows.
+- **Notes, rating, hero, remove** on every item (FR-37, FR-43 soft delete). **Colour search**
+  (FR-25, `?near=hex`), **New this week**, and search now shows exact lexical hits first.
+- **JSON API** for The HausBuch bridge (FR-38, FR-39 from this side): `/api/items`,
+  `/api/items/:id`, plus `/api/health` (NFR-11, NFR-12). Token or session.
+- **`next build` passes clean**: 14 routes, Edge-safe middleware, types valid.
 - Round 3 before it: the **browser extension** (`extension/`) and boards.
 
-Gate: `tsc` clean, **29 tests** at the root (fake embedder) plus 8 in the extension, integrity
+Gate: `tsc` clean, `next build` clean, **32 tests** at the root (fake embedder) plus 8 in the extension, integrity
 PASS. Every feature was driven in the browser or by curl before being called done.
 
 ### Bugs found and fixed this round
@@ -46,6 +53,14 @@ PASS. Every feature was driven in the browser or by curl before being called don
 - A CLIP query with no lexical hits returned the whole library ranked. Added a similarity floor
   (0.21) below which the semantic half returns nothing.
 - `config.mirrorDir` had been dropped in the round-2 rewrite; restored.
+- `?color=` collided with the taxonomy facet whose key is `color` and was read as a facet
+  filter. Colour search uses `?near=`. Any new URL parameter must not be a facet key.
+- **The middleware was redirecting every cookie-less `/api/*` call to the sign-in page**, so a
+  bearer-token client (the extension's own `whoAmI`, The HausBuch bridge) got HTML instead of
+  JSON. Only `/api/ingest` had been excluded. The middleware now guards pages only; every API
+  route authenticates itself and answers 401 or 403 in JSON. Verified route by route with curl.
+- Rank fusion interleaved eleven vaguely similar images ahead of the one note that contained
+  the word typed. Few exact hits now lead; fusion is kept for long, inexact queries.
 
 ### Not built, and why
 - **Pinterest API connector** (FR-1): needs a Pinterest developer app and standard-tier
