@@ -1,0 +1,45 @@
+{
+  "name": "quarry",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HAUS visual reference library. REF-01 concept build.",
+  "scripts": {
+    "dev": "next dev -p 3200",
+    "build": "next build",
+    "start": "next start -p 3200",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "migrate": "tsx tools/migrate.ts",
+    "seed": "tsx tools/seed-taxonomy.ts",
+    "setup": "npm run seed",
+    "import": "tsx tools/import-folder.ts",
+    "clip": "tsx tools/clip-url.ts",
+    "tag": "tsx tools/retag.ts",
+    "verify": "tsx tools/verify.ts",
+    "demo": "tsx tools/make-demo-images.ts",
+    "icons": "tsx tools/make-icons.ts"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.126.0",
+    "@aws-sdk/client-s3": "^3.1135.0",
+    "@aws-sdk/s3-request-presigner": "^3.1135.0",
+    "@electric-sql/pglite": "^0.5.8",
+    "blurhash": "^2.0.5",
+    "drizzle-orm": "^0.45.2",
+    "next": "15.5.25",
+    "next-auth": "^5.0.0-beta.32",
+    "postgres": "^3.4.9",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "sharp": "^0.35.4",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.3",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "tsx": "^4.23.13",
+    "typescript": "^5.9.3",
+    "vitest": "^3.2.7"
+  }
+}
