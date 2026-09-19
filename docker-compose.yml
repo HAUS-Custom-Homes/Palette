@@ -1,0 +1,63 @@
+# Palette on your own hardware (the Proxmox box). See docs/SELF-HOST.md.
+#
+#   app      the same image Railway builds, images on a disk you own
+#   db       Postgres 17, its data in a named volume
+#   tunnel   Cloudflare Tunnel: HTTPS from anywhere, no ports opened on the router
+#
+# Secrets live in .env.production next to this file (gitignored). Nothing here
+# is a secret.
+
+services:
+  db:
+    image: postgres:17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: palette
+      POSTGRES_DB: palette
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env.production}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U palette -d palette"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    env_file: .env.production
+    environment:
+      DATABASE_URL: postgres://palette:${POSTGRES_PASSWORD}@db:5432/palette
+      # Images on your own disk, not in a bucket.
+      PALETTE_STORE_DRIVER: local
+      PALETTE_DATA_DIR: /data
+      PALETTE_MODEL_DIR: /data/models
+      PORT: "3200"
+    volumes:
+      # The library itself. Point PALETTE_LIBRARY_DIR at a dataset with room to
+      # grow and, ideally, redundancy (ZFS mirror). Default is a folder here.
+      - ${PALETTE_LIBRARY_DIR:-./library}:/data
+    ports:
+      # LAN access for the office. The tunnel does not need this.
+      - "3200:3200"
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3200/api/healthz').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on: [app]
+    command: tunnel --no-autoupdate run
+    environment:
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env.production}
+
+volumes:
+  pgdata:

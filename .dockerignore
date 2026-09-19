@@ -11,3 +11,6 @@ evals/golden/*.png
 .env.*
 !.env.example
 *.tsbuildinfo
+.env.production
+library
+backups

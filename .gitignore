@@ -12,3 +12,8 @@ data-test/
 demo-images/
 *.tsbuildinfo
 next-env.d.ts
+
+# self-host secrets and data
+.env.production
+library/
+backups/

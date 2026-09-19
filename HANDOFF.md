@@ -64,6 +64,10 @@ queue in-process every 60s. `/api/healthz` is the unauthenticated liveness check
 locally in production mode against an empty database; the Dockerfile itself has not been built
 (no Docker on this machine), so the first Railway build is its test.
 
+### Two ways to host, both from the same image
+- **Railway** (`docs/DEPLOY.md`): in progress on 2026-09-18. Project `adorable-hope`, Postgres added, first Dockerfile build succeeded, domain `palette-production-6917.up.railway.app` on port 3200, health check set, six non-secret variables staged. Waiting on Trevor: the Google policy checkbox and OAuth client, five secret variables, then Deploy. R2 bucket `palette` exists; Google project `palette-509023` exists, audience Internal.
+- **Self-hosted on the Proxmox box** (`docs/SELF-HOST.md`, `docker-compose.yml`): app + Postgres + Cloudflare Tunnel, images on local disk, R2 demoted to the offsite copy. $0 a month. Untested (no Docker on this machine); needs the domain's DNS on Cloudflare for a tunnel hostname. Trevor asked about this on 2026-09-18 and has not chosen.
+
 ### Bugs found and fixed this round
 - The `haus` field arrives as a slug from every capture surface but ingest treated it as an id
   (round 3). `resolveOpenTermIds()` accepts either.
