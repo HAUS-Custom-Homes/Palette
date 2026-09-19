@@ -1,5 +1,5 @@
 # Handoff
-Last updated: 2026-09-18 on Trevor_Lenovo
+Last updated: 2026-09-18 on Trevor_Lenovo (hardware list flagged for 2026-09-19)
 
 ## Current state
 
@@ -71,6 +71,33 @@ locally in production mode against an empty database; the Dockerfile itself has 
 - **Still to do on Railway:** the generated `palette-production-6917.up.railway.app` domain targets port 3200 and answers 502 (app listens on 8080): delete it or retarget it. No `/data` volume yet, so the CLIP model re-downloads on each deploy. `ANTHROPIC_API_KEY` not set, so tags are filename guesses. First sign-in (becomes owner) and the first R2 `npm run verify -- --full` are not done yet.
 - Access note: agents cannot use `~/.ssh/pipeline_deploy_ed25519` (blocked by the permission classifier). Proxmox is reachable over Teleport via its web UI once Trevor signs in.
 
+### FLAGGED FOR 2026-09-19: the server purchase
+Trevor wants real hardware to bring Palette home and leave room for the rest of the HAUS apps
+(he is weighing a build-your-own Buildertrend: Pipeline + HausBuch + Palette + walkmyhaus are
+already the first modules). The current rack is a NavePoint 15U wall mount, **16 inches deep,
+200 lb**, so full-depth rack servers are out; a deeper rack only unlocks loud, power-hungry
+gear and was advised against. Prices below were read on 2026-09-18 and are moving fast (RAM and
+SSD prices have spiked: 64GB of DDR5 SODIMM alone is $830 to $1,000).
+
+| Item | Price | Where |
+|---|---|---|
+| Minisforum MS-01, i5-12600H, 32GB + 1TB (buy populated: the RAM+SSD bundle is $520, parts alone are about $745) | $959.00 | amazon.com/dp/B0DXNFP13J (sold by Minisforum US; same at store.minisforum.com) |
+| Samsung 990 EVO Plus 2TB NVMe x2, mirrored data pool | $352.10 each | newegg.com/samsung-2tb-990-evo-plus-nvme-2-0/p/N82E16820147900 |
+| Rack mount for MS-01, 19 inch 2U | $54.00 | amazon.com/dp/B0DHRXX8XP |
+| CyberPower OR500LCDRM1U 1U UPS (check depth against 16 inches) | $219.95 | amazon.com/dp/B000XJJN60 |
+
+Total about **$1,937** before tax. Cheaper: Crucial P310 2TB x2 at $299.99 (amazon.com/dp/B0DC8RVRBZ,
+QLC) saves about $105; or skip the 2TB pair and mirror the included 1TB with a Crucial P310 1TB
+at $174.70 (amazon.com/dp/B0DC8VPSHV) for about $1,408 total. Also needed: SFP+ DAC or Cat6
+depending on the UniFi switch, a USB stick for the Proxmox installer. Later, if storage passes
+about 1TB: UniFi UNAS Pro (not priced). Trevor places the order himself; agents never check out.
+
+When it arrives: install Proxmox, join or migrate the existing containers (homeassistant 100,
+fileserver 101, camrelay 102, walkmyhaus 103, palette-db 104, pipeline 105) one at a time, run
+`tools/provision-proxmox.sh`, `npm run export` from Railway and `npm run import` at home, repoint
+the `hauspalette.com` CNAME at a tunnel, keep R2 as the offsite copy, then delete the Railway
+project.
+
 ### Bugs found and fixed this round
 - The `haus` field arrives as a slug from every capture surface but ingest treated it as an id
   (round 3). `resolveOpenTermIds()` accepts either.
@@ -99,6 +126,7 @@ locally in production mode against an empty database; the Dockerfile itself has 
 
 ## Next steps
 
+0. **Flagged for 2026-09-19: decide on and order the server** (list and prices under "FLAGGED" above; re-check prices first). Also open: whether to write a PRD for the Buildertrend replacement, starting with a shared sign-in and job list; needs what HAUS pays Buildertrend and which modules the team really uses.
 1. **Pick up here (stopped for the night 2026-09-18):** Trevor signs in at https://hauspalette.com
    first (becomes owner), drops one image to prove upload, R2 and tagging, and deletes the
    downloaded Google `client_secret*.json` from Downloads. Then: delete or retarget the 502
