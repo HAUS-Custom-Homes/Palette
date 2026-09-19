@@ -4,6 +4,21 @@ The alternative to `docs/DEPLOY.md`: the app, the database and every image on th
 reached from anywhere over HTTPS through a free Cloudflare Tunnel. No monthly hosting bill.
 Same container, same code, one setting different (`PALETTE_STORE_DRIVER=local`).
 
+## The short way
+
+On the Proxmox host, as root:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/HAUS-Custom-Homes/Palette/main/tools/provision-proxmox.sh)
+```
+
+It creates an LXC named `palette` (same shape as the walkmyhaus and pipeline containers),
+installs Docker and cloudflared, clones the repo, generates the database password and
+`AUTH_SECRET` inside the container without printing them, builds, starts, and waits for
+`/api/healthz`. It then prints the two steps that need you to sign in: `cloudflared tunnel login`
+followed by `tools/tunnel-setup.sh`, and the Google client. Safe to run twice. The rest of this
+page is the long way and the reasoning.
+
 ## What you trade
 
 | | Railway + R2 | Your own box |

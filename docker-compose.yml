@@ -2,7 +2,7 @@
 #
 #   app      the same image Railway builds, images on a disk you own
 #   db       Postgres 17, its data in a named volume
-#   tunnel   Cloudflare Tunnel: HTTPS from anywhere, no ports opened on the router
+#   tunnel   optional; the provision script runs cloudflared outside compose instead
 #
 # Secrets live in .env.production next to this file (gitignored). Nothing here
 # is a secret.
@@ -51,13 +51,17 @@ services:
       retries: 5
       start_period: 60s
 
+  # Optional. tools/provision-proxmox.sh runs cloudflared as a service in the
+  # container instead (no token to handle). To use this one: set TUNNEL_TOKEN
+  # and add `--profile tunnel` to the compose command.
   tunnel:
+    profiles: ["tunnel"]
     image: cloudflare/cloudflared:latest
     restart: unless-stopped
     depends_on: [app]
     command: tunnel --no-autoupdate run
     environment:
-      TUNNEL_TOKEN: ${TUNNEL_TOKEN:?set TUNNEL_TOKEN in .env.production}
+      TUNNEL_TOKEN: ${TUNNEL_TOKEN:-}
 
 volumes:
   pgdata:
