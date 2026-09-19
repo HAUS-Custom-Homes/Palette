@@ -64,9 +64,12 @@ queue in-process every 60s. `/api/healthz` is the unauthenticated liveness check
 locally in production mode against an empty database; the Dockerfile itself has not been built
 (no Docker on this machine), so the first Railway build is its test.
 
-### Two ways to host, both from the same image
-- **Railway** (`docs/DEPLOY.md`): in progress on 2026-09-18. Project `adorable-hope`, Postgres added, first Dockerfile build succeeded, domain `palette-production-6917.up.railway.app` on port 3200, health check set, six non-secret variables staged. Waiting on Trevor: the Google policy checkbox and OAuth client, five secret variables, then Deploy. R2 bucket `palette` exists; Google project `palette-509023` exists, audience Internal.
-- **Self-hosted on the Proxmox box** (`docs/SELF-HOST.md`, `docker-compose.yml`): app + Postgres + Cloudflare Tunnel, images on local disk, R2 demoted to the offsite copy. $0 a month. Untested (no Docker on this machine); needs the domain's DNS on Cloudflare for a tunnel hostname. Trevor asked about this on 2026-09-18 and has not chosen.
+### Hosting decision (2026-09-18): Railway + R2 now, own hardware later
+- **Why not the Proxmox box:** it is an AMD A4-9120C, 2 cores, 7.2GB RAM with 5.6GB used and already swapping, 35GB free on one disk. Palette does not fit beside Home Assistant, walkmyhaus and pipeline. `docs/SELF-HOST.md`, `docker-compose.yml`, `tools/provision-proxmox.sh` and `tools/tunnel-setup.sh` are ready (untested) for the day there is a bigger machine; moving is `npm run export` then `npm run import`.
+- **Domain:** `hauspalette.com`, registered at GoDaddy, DNS moved to Cloudflare (same account as the R2 bucket). Apex CNAME to Railway (DNS only) and the `_railway-verify` TXT are in place.
+- **Railway:** project `adorable-hope`, Postgres added, custom domain `hauspalette.com` on port 8080 (the port Railway detected; the generated `up.railway.app` domain is still set to 3200 and answers 502, fix or delete it after the first good deploy). Six non-secret variables staged, **not yet deployed**.
+- **Waiting on Trevor:** Google OAuth client (redirect `https://hauspalette.com/api/auth/callback/google`), then five secret variables in Railway (`R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`, `AUTH_SECRET`), then Deploy.
+- Access note: agents cannot use `~/.ssh/pipeline_deploy_ed25519` (blocked by the permission classifier). Proxmox is reachable over Teleport via its web UI once Trevor signs in.
 
 ### Bugs found and fixed this round
 - The `haus` field arrives as a slug from every capture surface but ingest treated it as an id
