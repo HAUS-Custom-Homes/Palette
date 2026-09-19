@@ -99,7 +99,11 @@ locally in production mode against an empty database; the Dockerfile itself has 
 
 ## Next steps
 
-1. **Trevor: deploy to Railway** (`docs/DEPLOY.md`, seven steps). Sign in first to become owner.
+1. **Pick up here (stopped for the night 2026-09-18):** Trevor signs in at https://hauspalette.com
+   first (becomes owner), drops one image to prove upload, R2 and tagging, and deletes the
+   downloaded Google `client_secret*.json` from Downloads. Then: delete or retarget the 502
+   `up.railway.app` domain, try a `/data` volume, confirm the `MissingSecret` log line was only
+   the pre-variables deployment.
 2. **Load the extension** and run the first real scan on your Instagram saved list.
 3. **`ANTHROPIC_API_KEY`**, `npm run tag -- --all`, then **label the golden set** (the designer,
    200 images, `evals/README.md`) and `npm run eval`. Until then every tag is a suggestion,
