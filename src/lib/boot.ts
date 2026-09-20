@@ -30,6 +30,21 @@ async function run() {
     console.log(`[boot] empty database: seeded ${r.facets} facets, ${r.terms} terms`);
   }
 
+  // A haus named before haus boards existed (or imported by a CLI) still gets
+  // its board. ensureHausBoard is idempotent, so this is a no-op once caught up.
+  const orphans = await d.query<{ slug: string; label: string; created_by: string | null }>(
+    `SELECT t.slug, t.label, t.created_by FROM taxonomy_terms t
+       JOIN taxonomy_facets f ON f.id = t.facet_id
+      WHERE f.key = 'project' AND t.status = 'active' AND t.created_by IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM boards b WHERE b.is_smart
+                         AND b.filter_json -> 'facets' -> 'project' = to_jsonb(ARRAY[t.slug]))`,
+  );
+  if (orphans.length) {
+    const { ensureHausBoard } = await import("@/boards/boards");
+    for (const o of orphans) await ensureHausBoard(o.created_by!, o.slug, o.label);
+    console.log(`[boot] made boards for ${orphans.length} haus(es)`);
+  }
+
   // Serverless hosts cannot keep a timer alive, so they rely on after() and a
   // cron. An always-on container sets PALETTE_WORKER=1 and drains the queue
   // itself: retries, quarantine recovery and embedding all just happen.

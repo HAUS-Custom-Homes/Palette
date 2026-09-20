@@ -23,9 +23,10 @@ export type BoardRow = {
 
 export async function listBoards(userId: string): Promise<BoardRow[]> {
   const d = await db();
-  return d.query<BoardRow>(
+  const rows = await d.query<BoardRow & { filter: Record<string, unknown> | null }>(
     `SELECT b.id, b.name, b.description, b.owner_id AS "ownerId", u.name AS "ownerName",
             b.is_private AS "isPrivate", b.is_smart AS "isSmart", b.created_at::text AS "createdAt",
+            b.filter_json AS filter,
             (SELECT count(*)::int FROM board_items bi JOIN items i ON i.id = bi.item_id
               WHERE bi.board_id = b.id AND i.deleted_at IS NULL) AS count,
             (SELECT a.sha256 FROM board_items bi
@@ -37,6 +38,21 @@ export async function listBoards(userId: string): Promise<BoardRow[]> {
       ORDER BY b.created_at DESC`,
     [userId],
   );
+
+  // A smart board holds a filter, not items, so its count and cover come from
+  // running the filter. A team has tens of boards, not thousands.
+  const smart = rows.filter((r) => r.isSmart && r.filter);
+  if (smart.length) {
+    const { search } = await import("@/search/query");
+    await Promise.all(
+      smart.map(async (r) => {
+        const res = await search({ ...(r.filter as object), limit: 1 });
+        r.count = res.total;
+        r.coverSha = res.items[0]?.sha256 ?? null;
+      }),
+    );
+  }
+  return rows.map(({ filter: _filter, ...r }) => r);
 }
 
 export async function createBoard(userId: string, name: string, description?: string, filter?: Record<string, unknown>): Promise<string> {
@@ -222,4 +238,21 @@ export async function boardsForItem(itemId: string, userId: string) {
     (await d.query<{ board_id: string }>(`SELECT board_id FROM board_items WHERE item_id = $1`, [itemId])).map((r) => r.board_id),
   );
   return { on: all.filter((b) => on.has(b.id)), available: all.filter((b) => !on.has(b.id)) };
+}
+
+/**
+ * FR-46, the useful half. Every haus gets a smart board the moment it is
+ * named, so "everything we have saved for the Hurst haus" is one tap from the
+ * boards page and never has to be built by hand. It is a saved filter, so it is
+ * always current. Idempotent: one board per haus slug, whoever creates it.
+ */
+export async function ensureHausBoard(userId: string, slug: string, label: string): Promise<string> {
+  const d = await db();
+  const existing = await d.one<{ id: string }>(
+    `SELECT id FROM boards WHERE is_smart AND filter_json::jsonb -> 'facets' -> 'project' = $1::jsonb LIMIT 1`,
+    [JSON.stringify([slug])],
+  );
+  if (existing) return existing.id;
+  const name = /haus$/i.test(label) ? label : `${label} haus`;
+  return createBoard(userId, name, "Everything saved for this haus. Updates itself.", { facets: { project: [slug] } });
 }

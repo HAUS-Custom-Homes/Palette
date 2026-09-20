@@ -109,6 +109,12 @@ export async function applyTags(
       await tx.query(`UPDATE items SET caption_ai = $1 WHERE id = $2`, [result.caption, itemId]);
     }
 
+    // FR-24. ocr_text feeds search_tsv. Only overwrite when this run actually
+    // read something, so a re-tag by a tagger that cannot read never blanks it.
+    if (result.visibleText) {
+      await tx.query(`UPDATE items SET ocr_text = $1 WHERE id = $2`, [result.visibleText, itemId]);
+    }
+
     // FR-23. The only channel by which a closed vocabulary grows.
     for (const s of result.unmatched) {
       const label = s.label.trim().toLowerCase();
@@ -212,6 +218,13 @@ export async function createOpenTerm(
      VALUES ($1, $2, $3, 'active', $4) RETURNING id`,
     [facet.id, slug, clean, userId],
   );
+
+  // A new haus gets its own always-current board (FR-46). Imported lazily:
+  // boards reaches into search, which reaches back here.
+  if (facetKey === "project") {
+    const { ensureHausBoard } = await import("@/boards/boards");
+    await ensureHausBoard(userId, slug, clean);
+  }
   return { termId: row!.id, created: true };
 }
 

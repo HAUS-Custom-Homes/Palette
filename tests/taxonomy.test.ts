@@ -41,7 +41,7 @@ describe("vocabulary growth", () => {
     expect(renderTaxonomyPrompt(await loadTaxonomy())).toContain("tadelakt");
     // And the structured-output schema will accept it: parsing the slug succeeds.
     const schema = buildTagSchema(await loadTaxonomy());
-    expect(schema.safeParse({ caption: "x", material: [{ term: "tadelakt", confidence: 0.9 }], unmatched_suggestions: [] }).success).toBe(true);
+    expect(schema.safeParse({ caption: "x", visible_text: "", material: [{ term: "tadelakt", confidence: 0.9 }], unmatched_suggestions: [] }).success).toBe(true);
     expect((await listProposals()).some((p) => p.label === "tadelakt")).toBe(false);
   });
 

@@ -82,7 +82,7 @@ export const config = {
 } as const;
 
 export const TAXONOMY_VERSION = 2;
-export const PROMPT_VERSION = "tag-v1";
+export const PROMPT_VERSION = "tag-v2";
 
 /** The user tools run as when nobody is signed in (imports, clips, cron). */
 export const SYSTEM_USER_EMAIL = "system@palette.local";

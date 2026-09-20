@@ -102,6 +102,7 @@ function normaliseMime(mime: string): "image/jpeg" | "image/png" | "image/gif" |
 function shape(parsed: Record<string, unknown>, all: LiveFacet[]): TagResult {
   const out: TagResult = {
     caption: String(parsed.caption ?? ""),
+    visibleText: String(parsed.visible_text ?? "").trim().slice(0, 2000),
     facets: {},
     unmatched: (parsed.unmatched_suggestions as TagResult["unmatched"]) ?? [],
   };

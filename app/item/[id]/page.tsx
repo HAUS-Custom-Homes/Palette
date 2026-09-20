@@ -124,6 +124,18 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
         {sp.shared && <span className="pill">saved from your phone</span>}
       </div>
 
+      {/* A share from the phone skips the capture form, so the one question
+          only a person can answer is asked here, once, and is skippable. */}
+      {sp.shared && hausTags.length === 0 && user.role !== "viewer" && (
+        <div className="notice" data-kind="attention" style={{ margin: "12px 16px 0" }}>
+          <b>Saved. Which haus is this for?</b>{" "}
+          <span className="hint">Optional. Pick one, type a new one, or just leave.</span>
+          <div style={{ marginTop: 8 }}>
+            <HausPicker itemId={id} hauses={allHauses} action={toggle} />
+          </div>
+        </div>
+      )}
+
       <div className="detail">
         <div>
           <img src={`/api/asset/${item.sha256}/detail`} alt={String(item.caption_ai ?? "")} />
@@ -158,6 +170,15 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
               </form>
             </div>
           )}
+
+          {item.ocr_text ? (
+            <div className="panel">
+              <h3>Text in this image</h3>
+              <p className="hint" style={{ margin: 0, whiteSpace: "pre-wrap" }}>
+                {String(item.ocr_text).split(" | ").join("\n")}
+              </p>
+            </div>
+          ) : null}
 
           <div className="panel">
             <h3>Notes</h3>

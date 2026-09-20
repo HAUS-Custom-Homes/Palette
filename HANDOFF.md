@@ -113,14 +113,19 @@ project.
 - Rank fusion interleaved eleven vaguely similar images ahead of the one note that contained
   the word typed. Few exact hits now lead; fusion is kept for long, inexact queries.
 
+### Built 2026-09-19 (while the server ships)
+- **Text in images is searchable (FR-24)** with no OCR dependency: the tagging call now also returns `visible_text`, stored in `items.ocr_text` (already in `search_tsv`) and shown on the item page. `PROMPT_VERSION` is `tag-v2`. Needs `ANTHROPIC_API_KEY`; the heuristic tagger reads nothing and never blanks existing text. Images tagged before this need `npm run tag -- --all` to gain it.
+- **A smart board per haus (FR-46):** `createOpenTerm('project', ...)` calls `ensureHausBoard()`; boot backfills any haus without one. The boards list now shows a real count and cover for smart boards.
+- **"Which haus?" after a phone share:** the item page asks once, skippably, when `?shared=1` and no haus is set. This settles the open question without adding a step to the share itself.
+- **Pushing to `main` deploys to production** (Railway watches the branch). Gate every push on `tsc`, `npm test`, `npm run verify` and `npx next build`.
+
 ### Not built, and why
 - **Pinterest API connector** (FR-1): needs a Pinterest developer app and standard-tier
   approval. The extension already imports Pinterest boards from the browser, which is the same
   images without the approval wait.
 - **Email ingest** (FR-9): needs an inbound mail provider. The watch folder and the phone cover
   the same need.
-- **OCR** (FR-24): tesseract.js is a large dependency for a feature nobody has asked for yet.
-- **Region tagging, auto-board suggestions** (FR-45, FR-46): Phase 5.
+- **Region tagging** (FR-45): Phase 5. (The useful half of FR-46, a self-filling board per haus, is built.)
 - **The HausBuch bridge** (FR-38, FR-39): a round in that repo.
 - **pgvector**: not needed below ~50k images; the step is in `docs/DEPLOY.md`.
 

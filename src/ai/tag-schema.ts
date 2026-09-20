@@ -74,6 +74,16 @@ export function buildTagSchema(all: LiveFacet[]) {
   const facets = modelFacets(all);
   const shape: Record<string, z.ZodTypeAny> = {
     caption: z.string().describe("One plain sentence describing the image as a builder would say it."),
+    // FR-24. The model is already looking at the image, so reading the words in
+    // it costs a few output tokens rather than an OCR dependency. This is what
+    // makes a screenshot of a paint name or a product label findable.
+    visible_text: z
+      .string()
+      .describe(
+        "Words legibly printed or written in the image, verbatim: product and colour names, brand, " +
+          "model numbers, dimensions, sign or label text. Separate distinct pieces with ' | '. " +
+          "Empty string when there is none. Never describe; only transcribe.",
+      ),
   };
 
   for (const f of facets) {
@@ -103,6 +113,8 @@ export function buildTagSchema(all: LiveFacet[]) {
 
 export type TagResult = {
   caption: string;
+  /** Text read off the image (FR-24). Optional so other taggers need not supply it. */
+  visibleText?: string;
   facets: Record<string, Array<{ term: string; confidence: number }>>;
   unmatched: Array<{ facet: string; label: string }>;
 };
