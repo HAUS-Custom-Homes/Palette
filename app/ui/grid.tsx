@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ItemRow } from "@/search/query";
 import { BoardPicker } from "./board-picker";
-import { PlayIcon, SourceIcon, StackIcon, clock, displayName } from "./icons";
+import { PLATFORM_NAME, PlatformMark, PlayIcon, StackIcon, clock, displayName, platformOf } from "./icons";
 
 /**
  * REF-01 FR-28, FR-30, FR-32, FR-36.
@@ -160,6 +160,7 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
           const it = items[i]!;
           const on = selected.has(it.id);
           const isVideo = it.hasVideo;
+          const platform = platformOf(it.sourceKind, it.sourceUrl);
           return (
             <div className="card" id={`card-${it.id}`} key={it.id} data-selected={on} data-focus={i === focus}>
               <Link href={`/item/${it.id}`} onClick={(e) => { if (e.shiftKey || e.metaKey || e.ctrlKey) { e.preventDefault(); toggle(it.id); } }}>
@@ -177,10 +178,10 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
                   <span className="glass" title="Video"><PlayIcon />{it.videoSeconds ? clock(it.videoSeconds) : it.mediaCount > 1 ? it.mediaCount : ""}</span>
                 ) : it.mediaCount > 1 ? (
                   <span className="glass" title={`${it.mediaCount} images in this post`}><StackIcon />{it.mediaCount}</span>
-                ) : ["instagram", "pinterest", "web", "share"].includes(it.sourceKind ?? "") ? (
-                  <span className="glass"><SourceIcon kind={it.sourceKind} /></span>
                 ) : null}
               </div>
+              {/* Where it came from: a ghost in the corner. There when looked for, gone otherwise. */}
+              {platform && <span className="ghost" title={`Saved from ${PLATFORM_NAME[platform]}`}><PlatformMark platform={platform} /></span>}
               <div className="tile-meta">
                 <h3>{displayName(it.captionAi, it.title)}</h3>
               </div>

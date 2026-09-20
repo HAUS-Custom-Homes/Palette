@@ -67,6 +67,7 @@ export type ItemRow = {
   sha256: string;
   capturedAt: string;
   sourceKind: string | null;
+  sourceUrl: string | null;
   ownerName: string | null;
   needsReview: number;
   /** REF-02: how many pictures and videos the post holds, and whether one is a video. */
@@ -167,7 +168,8 @@ const ITEM_SELECT = `
   SELECT i.id, i.title, i.caption_ai AS "captionAi",
          a.width, a.height, a.blurhash, a.sha256,
          i.captured_at::text AS "capturedAt",
-         (SELECT kind::text FROM sources s WHERE s.item_id = i.id LIMIT 1) AS "sourceKind",
+         (SELECT kind::text FROM sources s WHERE s.item_id = i.id ORDER BY s.fetched_at LIMIT 1) AS "sourceKind",
+         (SELECT source_url FROM sources s WHERE s.item_id = i.id AND s.source_url IS NOT NULL ORDER BY s.fetched_at LIMIT 1) AS "sourceUrl",
          u.name AS "ownerName",
          (SELECT t.label FROM item_terms it JOIN taxonomy_terms t ON t.id = it.term_id
             JOIN taxonomy_facets f ON f.id = t.facet_id

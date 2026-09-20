@@ -16,6 +16,49 @@ export const MutedIcon = () => (<svg {...base} width={18} height={18}><path d="M
 export const SoundIcon = () => (<svg {...base} width={18} height={18}><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M17 8.500a5 5 0 0 1 0 7M19.800 6a9 9 0 0 1 0 12" /></svg>);
 export const ExpandIcon = () => (<svg {...base} width={18} height={18}><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>);
 
+export type Platform = "instagram" | "pinterest" | "tiktok" | "youtube" | "web" | "phone";
+
+/**
+ * Where a card came from, as the person would say it. The kind alone is not
+ * enough: a TikTok link arrives as "web" or "share", and a photo shared from
+ * the phone has no address at all.
+ */
+export function platformOf(kind: string | null, url: string | null): Platform | null {
+  let host = "";
+  try { host = url ? new URL(url).hostname.replace(/^www\./, "") : ""; } catch { /* not a url */ }
+  if (kind === "instagram" || /(^|\.)instagram\.com$/.test(host)) return "instagram";
+  if (kind === "pinterest" || /(^|\.)pinterest\.[a-z.]+$/.test(host) || host === "pin.it") return "pinterest";
+  if (/(^|\.)tiktok\.com$/.test(host)) return "tiktok";
+  if (/(^|\.)youtube\.com$/.test(host) || host === "youtu.be") return "youtube";
+  if (host) return "web";
+  if (kind === "share" || kind === "upload" || kind === "watch_folder" || kind === "email") return "phone";
+  return null;
+}
+
+export const PLATFORM_NAME: Record<Platform, string> = {
+  instagram: "Instagram", pinterest: "Pinterest", tiktok: "TikTok", youtube: "YouTube", web: "a website", phone: "a phone or an upload",
+};
+
+const solid = { viewBox: "0 0 24 24", fill: "currentColor", "aria-hidden": true } as const;
+
+/** The ghosted mark in a card's corner. Sized and faded by CSS (.ghost). */
+export function PlatformMark({ platform }: { platform: Platform }) {
+  switch (platform) {
+    case "instagram":
+      return (<svg {...base} strokeWidth={1.9}><rect x="3.5" y="3.5" width="17" height="17" rx="5" /><circle cx="12" cy="12" r="4" /><circle cx="17.2" cy="6.8" r=".6" fill="currentColor" /></svg>);
+    case "pinterest":
+      return (<svg {...solid}><path d="M12 2.5a9.5 9.5 0 0 0-3.46 18.35c-.08-.75-.16-1.9.03-2.72l1.1-4.68s-.28-.56-.28-1.4c0-1.3.76-2.28 1.7-2.28.8 0 1.2.6 1.2 1.33 0 .8-.52 2.02-.78 3.14-.22.94.47 1.7 1.4 1.7 1.67 0 2.96-1.77 2.96-4.32 0-2.26-1.62-3.84-3.94-3.84a4.08 4.08 0 0 0-4.26 4.1c0 .8.31 1.68.7 2.15.08.1.09.18.07.27l-.26 1.07c-.04.17-.14.21-.32.13-1.18-.55-1.92-2.28-1.92-3.67 0-2.98 2.17-5.72 6.25-5.72 3.28 0 5.83 2.34 5.83 5.46 0 3.26-2.05 5.88-4.9 5.88-.96 0-1.86-.5-2.17-1.09l-.59 2.25c-.21.82-.79 1.85-1.18 2.48A9.5 9.5 0 1 0 12 2.5z" /></svg>);
+    case "tiktok":
+      return (<svg {...solid}><path d="M14.5 3h2.7c.2 1.9 1.3 3.4 3.3 3.7v2.8c-1.2 0-2.3-.3-3.3-.9v6.1c0 3.2-2.3 5.3-5.2 5.3-3 0-5.2-2.3-5.2-5.1 0-3.1 2.6-5.4 5.9-5v2.9c-1.6-.4-3 .6-3 2.1 0 1.3 1 2.3 2.3 2.3 1.4 0 2.5-1 2.5-2.700z" /></svg>);
+    case "youtube":
+      return (<svg {...base} strokeWidth={1.9}><rect x="3" y="6" width="18" height="12" rx="3.5" /><path d="M10.5 9.500v5l4.200-2.500z" fill="currentColor" stroke="none" /></svg>);
+    case "web":
+      return (<svg {...base} strokeWidth={1.9}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.800 3 2.800 15 0 18M12 3c-2.800 3-2.800 15 0 18" /></svg>);
+    case "phone":
+      return (<svg {...base} strokeWidth={1.9}><path d="M4 8.500A2.500 2.500 0 0 1 6.500 6H8l1.500-2h5L16 6h1.500A2.500 2.500 0 0 1 20 8.500v8a2.500 2.500 0 0 1-2.500 2.500h-11A2.500 2.500 0 0 1 4 16.500z" /><circle cx="12" cy="12.500" r="3.500" /></svg>);
+  }
+}
+
 export function SourceIcon({ kind }: { kind: string | null }) {
   if (kind === "instagram") return <InstagramIcon />;
   if (kind === "pinterest") return <PinterestIcon />;

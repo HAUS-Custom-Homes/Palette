@@ -151,7 +151,21 @@ button.chip { font-family: var(--font); }
   .tile-meta { left: 10px; right: 10px; bottom: 9px; }
   .tile-tl, .tile-tr { top: 8px; } .tile-tl { left: 8px; } .tile-tr { right: 8px; }
 }
-.select-dot { top: auto; left: auto; right: 12px; bottom: 12px; z-index: 3; width: 26px; height: 26px; }
+/* Where a card came from: a small white mark at half strength, no pill, no
+   border. The title stops short of it. The select circle moved to the top-left,
+   and the haus pill steps aside for it, so the two never share a corner. */
+.ghost {
+  position: absolute; right: 13px; bottom: 13px; z-index: 2; width: 20px; height: 20px; color: #fff; opacity: .5;
+  display: grid; place-items: center; filter: drop-shadow(0 1px 3px rgba(0,0,0,.6)); transition: opacity .15s;
+}
+.ghost svg { width: 100%; height: 100%; }
+.card:hover .ghost { opacity: .95; }
+.card:has(.ghost) .tile-meta { right: 44px; }
+.select-dot { top: 12px; left: 12px; right: auto; bottom: auto; z-index: 3; width: 26px; height: 26px; }
+.tile-tl { transition: left .15s; }
+.card:hover .tile-tl, .card[data-selected="true"] .tile-tl { left: 46px; }
+@media (hover: none) { .card:not([data-selected="true"]) .tile-tl { left: 12px; } }
+@media (max-width: 700px) { .ghost { right: 9px; bottom: 9px; width: 17px; height: 17px; } .card:has(.ghost) .tile-meta { right: 34px; } }
 .card[data-selected="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
 .card[data-focus="true"] { box-shadow: 0 0 0 2px var(--accent-dim); }
 
