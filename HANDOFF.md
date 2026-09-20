@@ -1,5 +1,5 @@
 # Handoff
-Last updated: 2026-09-18 on Trevor_Lenovo (hardware list flagged for 2026-09-19)
+Last updated: 2026-09-19 on Trevor_Lenovo
 
 ## Current state
 
@@ -71,26 +71,26 @@ locally in production mode against an empty database; the Dockerfile itself has 
 - **Still to do on Railway:** the generated `palette-production-6917.up.railway.app` domain targets port 3200 and answers 502 (app listens on 8080): delete it or retarget it. No `/data` volume yet, so the CLIP model re-downloads on each deploy. `ANTHROPIC_API_KEY` not set, so tags are filename guesses. First sign-in (becomes owner) and the first R2 `npm run verify -- --full` are not done yet.
 - Access note: agents cannot use `~/.ssh/pipeline_deploy_ed25519` (blocked by the permission classifier). Proxmox is reachable over Teleport via its web UI once Trevor signs in.
 
-### FLAGGED FOR 2026-09-19: the server purchase
-Trevor wants real hardware to bring Palette home and leave room for the rest of the HAUS apps
+### ORDERED 2026-09-19: the new server
+Trevor bought real hardware to bring Palette home and leave room for the rest of the HAUS apps
 (he is weighing a build-your-own Buildertrend: Pipeline + HausBuch + Palette + walkmyhaus are
-already the first modules). The current rack is a NavePoint 15U wall mount, **16 inches deep,
-200 lb**, so full-depth rack servers are out; a deeper rack only unlocks loud, power-hungry
-gear and was advised against. Prices below were read on 2026-09-18 and are moving fast (RAM and
-SSD prices have spiked: 64GB of DDR5 SODIMM alone is $830 to $1,000).
+already the first modules). The rack is a NavePoint 15U wall mount, **16 inches deep, 200 lb**,
+which is why this is a mini PC on a shelf mount and not a rack server.
 
-| Item | Price | Where |
+| Item | Qty | Price |
 |---|---|---|
-| Minisforum MS-01, i5-12600H, 32GB + 1TB (buy populated: the RAM+SSD bundle is $520, parts alone are about $745) | $959.00 | amazon.com/dp/B0DXNFP13J (sold by Minisforum US; same at store.minisforum.com) |
-| Samsung 990 EVO Plus 2TB NVMe x2, mirrored data pool | $352.10 each | newegg.com/samsung-2tb-990-evo-plus-nvme-2-0/p/N82E16820147900 |
-| Rack mount for MS-01, 19 inch 2U | $54.00 | amazon.com/dp/B0DHRXX8XP |
-| CyberPower OR500LCDRM1U 1U UPS (check depth against 16 inches) | $219.95 | amazon.com/dp/B000XJJN60 |
+| Minisforum MS-01, i5-12600H, 32GB RAM + 1TB SSD (amazon.com/dp/B0DXNFP13J) | 1 | $959.00 |
+| Samsung 990 EVO Plus 2TB NVMe, no heatsink, for a mirrored data pool (amazon.com/dp/B0DHLCRF91) | 2 | $359.99 each |
+| Rack mount for MS-01, 19 inch 2U (amazon.com/dp/B0DHRXX8XP) | 1 | $54.00 |
+| CyberPower CP1500PFCRM2U UPS, 1000W, 2U, 10.5 inches deep (amazon.com/dp/B0B354X985) | 1 | $359.95 |
+| CyberPower CPS1215RM basic PDU, 10 outlets, 1U (amazon.com/dp/B00077IG3O) | 1 | $59.99 |
 
-Total about **$1,937** before tax. Cheaper: Crucial P310 2TB x2 at $299.99 (amazon.com/dp/B0DC8RVRBZ,
-QLC) saves about $105; or skip the 2TB pair and mirror the included 1TB with a Crucial P310 1TB
-at $174.70 (amazon.com/dp/B0DC8VPSHV) for about $1,408 total. Also needed: SFP+ DAC or Cat6
-depending on the UniFi switch, a USB stick for the Proxmox installer. Later, if storage passes
-about 1TB: UniFi UNAS Pro (not priced). Trevor places the order himself; agents never check out.
+Total **$2,152.92** before tax. Rack units used by the new gear: 2U + 2U + 1U = 5U of 15.
+Still to have on hand: a USB stick for the Proxmox installer, and an SFP+ DAC or Cat6 patch
+depending on the UniFi switch port. Plan the disks as: Proxmox on the included 1TB, the two 2TB
+drives as a ZFS mirror for guests and the Palette library (about 1.8TB usable, roughly 350,000
+images at 5MB). 32GB RAM covers Home Assistant (4GB), Palette (4GB) and the four small
+containers with more than half to spare.
 
 When it arrives: install Proxmox, join or migrate the existing containers (homeassistant 100,
 fileserver 101, camrelay 102, walkmyhaus 103, palette-db 104, pipeline 105) one at a time, run
