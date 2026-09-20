@@ -63,7 +63,7 @@ async function saveSearch(formData: FormData) {
   "use server";
   const u = await requireUser();
   const filter = JSON.parse(String(formData.get("filter") ?? "{}")) as Record<string, unknown>;
-  const id = await createBoard(u.id, String(formData.get("name") ?? "Saved search"), "Smart board: updates as the library grows.", filter);
+  const id = await createBoard(u.id, String(formData.get("name") ?? "Saved search"), "Fills itself as the library grows.", filter);
   redirect(`/boards/${id}`);
 }
 
@@ -154,7 +154,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
             <form action={saveSearch}>
               <input type="hidden" name="filter" value={JSON.stringify({ q: params.q, facets: params.facets })} />
               <input type="hidden" name="name" value={[params.q, ...Object.values(params.facets ?? {}).flat()].filter(Boolean).join(", ").slice(0, 80) || "Saved search"} />
-              <button className="chip" type="submit" title="A board that stays current with this filter">Save as board</button>
+              <button className="chip" type="submit" title="A lookbook that stays current with this filter">Save as lookbook</button>
             </form>
           )}
         </div>

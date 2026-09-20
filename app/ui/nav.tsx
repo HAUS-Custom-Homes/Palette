@@ -12,7 +12,7 @@ export function Nav({ user, attention = 0, at }: { user: User; attention?: numbe
     <div className="nav">
       <Link href="/" className="mark">Palette<b>.</b></Link>
       <Link href="/" data-on={at === "library"}>Library</Link>
-      <Link href="/boards" data-on={at === "boards"}>Boards</Link>
+      <Link href="/boards" data-on={at === "boards"}>Lookbooks</Link>
       <Link href="/attention" data-on={at === "attention"}>
         Needs me{attention > 0 && <span className="pill">{attention}</span>}
       </Link>

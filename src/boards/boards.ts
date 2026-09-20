@@ -57,7 +57,7 @@ export async function listBoards(userId: string): Promise<BoardRow[]> {
 
 export async function createBoard(userId: string, name: string, description?: string, filter?: Record<string, unknown>): Promise<string> {
   const clean = name.trim().replace(/\s+/g, " ").slice(0, 80);
-  if (clean.length < 2) throw new Error("board name must be at least 2 characters");
+  if (clean.length < 2) throw new Error("a lookbook name needs at least 2 characters");
   const d = await db();
   // FR-33. A smart board is a saved search: it holds a filter, not items, and
   // is always as current as the library.

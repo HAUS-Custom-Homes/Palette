@@ -274,7 +274,7 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
           </div>
 
           <div className="panel">
-            <h3>Boards</h3>
+            <h3>Lookbooks</h3>
             {boards.on.map((b) => (
               <span className="tag" key={b.id} data-src="human">
                 <Link href={`/boards/${b.id}`}>{b.name}</Link>
@@ -282,7 +282,7 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
                   <input type="hidden" name="itemId" value={id} />
                   <input type="hidden" name="boardId" value={b.id} />
                   <input type="hidden" name="action" value="remove" />
-                  <button type="submit" title="Remove from board">×</button>
+                  <button type="submit" title="Remove from lookbook">×</button>
                 </form>
               </span>
             ))}

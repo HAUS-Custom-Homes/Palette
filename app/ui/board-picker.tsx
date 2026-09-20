@@ -5,11 +5,11 @@ import { useRef, useState } from "react";
 
 /**
  * Wherever something can be put on a board, a new board can be made right
- * there. Picking an existing one adds at once; "New board..." turns the picker
+ * there. Picking an existing one adds at once; "New lookbook..." turns the picker
  * into a name field, and Enter makes the board with the things already on it.
  */
 export function BoardPicker({
-  boards, itemIds, label = "Add to board...", onDone, compact = false,
+  boards, itemIds, label = "Add to lookbook...", onDone, compact = false,
 }: {
   boards: Array<{ id: string; name: string }>;
   itemIds: () => string[];
@@ -44,7 +44,7 @@ export function BoardPicker({
 
   const add = (boardId: string) => {
     const board = boards.find((b) => b.id === boardId);
-    return send(`/api/boards/${boardId}/items`, { itemIds: itemIds() }, () => `Added to ${board?.name ?? "the board"}`);
+    return send(`/api/boards/${boardId}/items`, { itemIds: itemIds() }, () => `Added to ${board?.name ?? "the lookbook"}`);
   };
   const create = () => {
     if (name.trim().length < 2) { setErr("Give it a name first."); input.current?.focus(); return; }
@@ -55,7 +55,7 @@ export function BoardPicker({
     return (
       <span className="board-new">
         <input ref={input} className="search" autoFocus value={name} disabled={busy} maxLength={80}
-               placeholder="Name the new board, e.g. Antoon primary bath"
+               placeholder="Name the new lookbook, e.g. Antoon primary bath"
                onChange={(e) => { setName(e.target.value); setErr(null); }}
                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void create(); } if (e.key === "Escape") setNaming(false); }} />
         <button type="button" className="btn" data-primary="true" onClick={() => void create()} disabled={busy}>{busy ? "Making..." : "Create"}</button>
@@ -70,7 +70,7 @@ export function BoardPicker({
       <select className="search" value="" disabled={busy} style={compact ? { flex: "0 0 210px", padding: "6px 8px" } : undefined}
               onChange={(e) => { const v = e.target.value; if (v === "__new") setNaming(true); else if (v) void add(v); }}>
         <option value="">{busy ? "Adding..." : label}</option>
-        <option value="__new">+ New board...</option>
+        <option value="__new">+ New lookbook...</option>
         {boards.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
       </select>
       {err && <span className="hint" style={{ color: "var(--warn)" }}>{err}</span>}

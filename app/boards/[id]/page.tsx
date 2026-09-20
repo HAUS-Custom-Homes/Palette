@@ -59,9 +59,9 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
     <div>
       <Nav user={user} />
       <div className="topbar" style={{ top: 44 }}>
-        <Link className="btn" href="/boards">All boards</Link>
+        <Link className="btn" href="/boards">All lookbooks</Link>
         <span style={{ fontFamily: "var(--serif)", fontSize: 16 }}>{board.name}</span>
-        <span className="hint">{board.count} {board.count === 1 ? "image" : "images"}{board.ownerName ? ` · ${board.ownerName}` : ""}{board.isPrivate ? " · private" : ""}{board.isSmart ? " · smart board, always current" : ""}</span>
+        <span className="hint">{board.count} {board.count === 1 ? "image" : "images"}{board.ownerName ? ` · ${board.ownerName}` : ""}{board.isPrivate ? " · private" : ""}{board.isSmart ? " · fills itself, always current" : ""}</span>
         <span style={{ flex: 1 }} />
         {board.canEdit && (
           <form action={privacy}>
@@ -110,8 +110,8 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
 
       {board.items.length === 0 ? (
         <div className="empty">
-          <p>Nothing on this board yet.</p>
-          <p style={{ fontSize: 12 }}>Open any image in the library and add it from the Boards panel.</p>
+          <p>Nothing in this lookbook yet.</p>
+          <p style={{ fontSize: 12 }}>Open anything in the library and add it from its Lookbooks panel.</p>
         </div>
       ) : (
         <div className="grid">
@@ -140,7 +140,7 @@ export default async function BoardPage({ params }: { params: Promise<{ id: stri
                     <form action={remove} style={{ display: "inline" }}>
                       <input type="hidden" name="boardId" value={board.id} />
                       <input type="hidden" name="itemId" value={it.id} />
-                      <button type="submit" title="Remove from board">×</button>
+                      <button type="submit" title="Remove from lookbook">×</button>
                     </form>
                   </span>
                 )}

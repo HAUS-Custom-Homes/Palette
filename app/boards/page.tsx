@@ -25,17 +25,17 @@ export default async function BoardsPage() {
     <div>
       <Nav user={user} />
       <div style={{ padding: 20, maxWidth: 1100 }}>
-        <h2 style={{ fontFamily: "var(--serif)", fontWeight: 400, margin: "0 0 4px" }}>Boards</h2>
-        <p className="hint" style={{ marginTop: 0 }}>Curated sets for a haus, a room, a meeting. Everyone sees a board unless its owner makes it private.</p>
+        <h2 style={{ fontFamily: "var(--serif)", fontWeight: 400, margin: "0 0 4px" }}>Lookbooks</h2>
+        <p className="hint" style={{ marginTop: 0 }}>Curated sets for a haus, a room, a meeting. Everyone sees a lookbook unless its owner makes it private.</p>
 
         <form action={create} className="panel" style={{ display: "flex", gap: 8, alignItems: "center" }}>
-          <input className="search" name="name" placeholder="New board, e.g. Hurst primary bath" required minLength={2} />
+          <input className="search" name="name" placeholder="New lookbook, e.g. Hurst primary bath" required minLength={2} />
           <input className="search" name="description" placeholder="optional note" style={{ flex: "0 0 260px" }} />
           <button className="btn" data-primary="true" type="submit">Create</button>
         </form>
 
         {boards.length === 0 ? (
-          <p className="empty">No boards yet. Make one above, or add an image to a board from its page.</p>
+          <p className="empty">No lookbooks yet. Make one above, or add a post to one from its page.</p>
         ) : (
           <div className="boards">
             {boards.map((b) => (
