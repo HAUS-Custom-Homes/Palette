@@ -10,6 +10,7 @@ import { requeue, runTagQueue } from "@/ingest/tag-worker";
 import { getItem, postFor, postMedia, similar } from "@/search/query";
 import { displayName } from "../../ui/icons";
 import { captionOf } from "@/ingest/page-preview";
+import { ItemBoardPicker } from "./board-picker";
 import { Carousel } from "./carousel";
 import { Nav } from "../../ui/nav";
 import { AddTag } from "./add-tag";
@@ -285,18 +286,12 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
                 </form>
               </span>
             ))}
-            {boards.available.length > 0 ? (
-              <form action={board} style={{ display: "flex", gap: 6, marginTop: boards.on.length ? 8 : 0 }}>
-                <input type="hidden" name="itemId" value={id} />
-                <select name="boardId" className="search" style={{ padding: "6px 8px", fontSize: 12 }} defaultValue="">
-                  <option value="" disabled>add to board...</option>
-                  {boards.available.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </select>
-                <button className="btn" type="submit">add</button>
-              </form>
-            ) : boards.on.length === 0 ? (
-              <p className="hint" style={{ margin: 0 }}>No boards yet. <Link href="/boards">Make one.</Link></p>
-            ) : null}
+            {user.role !== "viewer" && (
+              <div style={{ marginTop: boards.on.length ? 8 : 0 }}>
+                {/* A board that fills itself from a filter is not somewhere you put things by hand. */}
+                <ItemBoardPicker itemId={id} boards={boards.available.filter((b) => !b.isSmart).map((b) => ({ id: b.id, name: b.name }))} />
+              </div>
+            )}
           </div>
 
           <div className="panel">

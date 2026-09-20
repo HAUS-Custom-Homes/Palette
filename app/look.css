@@ -155,6 +155,12 @@ button.chip { font-family: var(--font); }
 .card[data-selected="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
 .card[data-focus="true"] { box-shadow: 0 0 0 2px var(--accent-dim); }
 
+/* ---- a new board, wherever a board can be picked ---- */
+.board-new { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; flex: 1; min-width: 0; }
+.board-new select.search { min-width: 190px; }
+.board-new input.search { flex: 1; min-width: 200px; border-radius: 999px; border-color: var(--accent); }
+.panel .board-new { display: flex; }
+
 /* ---- getting into the share sheet ---- */
 .lead-line { font-size: 17px; margin: 0 0 6px; color: var(--text); }
 .steps.big { font-size: 15px; line-height: 1.6; padding-left: 22px; margin: 14px 0 4px; }

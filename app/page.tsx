@@ -194,7 +194,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
             <p className="hint" style={{ padding: "16px 2px 0", margin: 0 }}>
               {total} {total === 1 ? "item" : "items"}{anyFilter ? " matching" : " in the library"}
             </p>
-            <Grid items={items} boards={boards.map((b) => ({ id: b.id, name: b.name }))}
+            <Grid items={items} boards={boards.filter((b) => !b.isSmart).map((b) => ({ id: b.id, name: b.name }))}
                   hauses={counts.find((f) => f.key === "project")?.terms ?? []} />
           </>
         )}

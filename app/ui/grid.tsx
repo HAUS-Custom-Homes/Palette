@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ItemRow } from "@/search/query";
+import { BoardPicker } from "./board-picker";
 import { PlayIcon, SourceIcon, StackIcon, clock, displayName } from "./icons";
 
 /**
@@ -75,7 +76,6 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
     }
   }
 
-  const addToBoard = (boardId: string) => boardId && post(`/api/boards/${boardId}/items`, { itemIds: targets() }, "added to board");
   const setHaus = (haus: string) => haus && post(`/api/items/haus`, { itemIds: targets(), haus }, "haus set");
 
   useEffect(() => {
@@ -136,11 +136,8 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
           {n > 0 ? <b>{n} selected</b> : <span className="hint">j k to move, x to select, c to compare</span>}
           {n > 0 && (
             <>
-              <select className="search" style={{ flex: "0 0 200px", padding: "6px 8px" }} value="" disabled={!!busy}
-                      onChange={(e) => addToBoard(e.target.value)}>
-                <option value="">add to board...</option>
-                {boards.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-              </select>
+              <BoardPicker compact boards={boards} itemIds={targets}
+                           onDone={(m) => { setMsg(m); setSelected(new Set()); }} />
               <select className="search" style={{ flex: "0 0 160px", padding: "6px 8px" }} value="" disabled={!!busy}
                       onChange={(e) => setHaus(e.target.value)}>
                 <option value="">set haus...</option>
