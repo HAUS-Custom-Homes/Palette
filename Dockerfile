@@ -26,14 +26,14 @@ ENV NODE_ENV=production \
     # does not download 350MB again. Images live in R2, rows in Postgres.
     PALETTE_DATA_DIR=/data \
     PALETTE_MODEL_DIR=/data/models \
-    PALETTE_EMBEDDINGS=clip \
+    PALETTE_EMBEDDINGS=off \
     # An always-on process can run its own tag worker (src/lib/boot.ts).
     PALETTE_WORKER=1
 COPY --from=build /app/node_modules ./node_modules
 COPY --from=build /app/.next ./.next
 COPY --from=build /app/public ./public
 COPY --from=build /app/drizzle ./drizzle
-COPY --from=build /app/package.json /app/next.config.ts ./
+COPY --from=build /app/package.json /app/next.config.mjs ./
 RUN mkdir -p /data
 EXPOSE 3200
 # Railway and friends inject PORT. 0.0.0.0 so the platform's proxy can reach it.

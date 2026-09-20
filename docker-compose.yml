@@ -36,6 +36,9 @@ services:
       PALETTE_STORE_DRIVER: local
       PALETTE_DATA_DIR: /data
       PALETTE_MODEL_DIR: /data/models
+      # Search by what a picture looks like. Needs about 1GB of RAM for the model,
+      # which the home server has and a small cloud container does not.
+      PALETTE_EMBEDDINGS: clip
       PORT: "3200"
     volumes:
       # The library itself. Point PALETTE_LIBRARY_DIR at a dataset with room to

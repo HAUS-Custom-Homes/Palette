@@ -50,7 +50,7 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
   through `proposed_terms` and a human promotion. `createOpenTerm()` refuses closed facets.
 - **`src/auth.config.ts` runs on the Edge runtime.** It imports nothing from Node and not even
   `src/config.ts`. Database work belongs in `src/auth.ts` callbacks only.
-- Native and WASM packages stay in `serverExternalPackages` in `next.config.ts`: `sharp`,
+- Native and WASM packages stay in `serverExternalPackages` in `next.config.mjs` (plain JS on purpose: a .ts config makes the production image install TypeScript on every boot): `sharp`,
   `@electric-sql/pglite`, `postgres`, `@huggingface/transformers`, `onnxruntime-node`. Bundling
   PGlite breaks every query; bundling transformers.js breaks embedding.
 - Embeddings are `real[]`, one schema for both databases. Do not introduce a pgvector column

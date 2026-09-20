@@ -3,6 +3,12 @@ import sharp, { type Sharp } from "sharp";
 import { config } from "@/config";
 import { derivedKey, store } from "@/storage/object-store";
 
+// A small cloud container has under a gigabyte to live in. libvips' operation
+// cache and a thread per core are the difference between saving a ten-image
+// post and being killed for memory halfway through it.
+sharp.cache(false);
+sharp.concurrency(1);
+
 /**
  * REF-01 FR-12, FR-22, FR-25.
  * Everything here is derived from the original and can be thrown away and

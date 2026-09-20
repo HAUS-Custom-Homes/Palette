@@ -1,6 +1,8 @@
-import type { NextConfig } from "next";
-
-const nextConfig: NextConfig = {
+// Plain JavaScript on purpose. With a .ts config, `next start` in the production
+// image (which has no TypeScript) installs TypeScript from the internet on every
+// boot: minutes of startup, and a server that cannot start offline.
+/** @type {import("next").NextConfig} */
+const nextConfig = {
   // sharp is native, PGlite loads WASM by file path, postgres-js opens sockets.
   // All three must stay external to the server bundle: bundled, PGlite's
   // `new URL(..., import.meta.url)` reaches fs.readFile as a URL object and
