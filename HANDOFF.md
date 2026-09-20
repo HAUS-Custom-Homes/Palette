@@ -140,6 +140,8 @@ project.
 
 ## Next steps
 
+**READ FIRST: `docs/REF-02-POSTS.md` (2026-09-20).** Trevor rejected the per-slide model after using the live site: he wants a post kept whole with a swipeable carousel and video that plays, as Stasht does. First-hand study of his Stasht account showed Stasht stores its own copies of images and video; the earlier "neither app keeps video" claim was wrong. The redesign (one item per post, `item_media`, stored video, "Make cover", "+" suggestion chips, one-tap save with Undo) is specified there with an acceptance list that must pass **on hauspalette.com with real posts**, judged by a critic that is not the builder. A working mock with the real Focus Room post was shown to Trevor on 2026-09-20; **nothing of REF-02 is built yet and the build waits on his reaction to the mock.**
+
 0. **First real-world check of 2026-09-20's work:** Trevor reloads the unpacked extension (`extension/.output/chrome-mv3` after `npm run build` in `extension/`), opens a multi-image Instagram post and a Reel, and tries the four buttons. Then **email-in (FR-9)** via Cloudflare Email Routing to a Worker that POSTs attachments to `/api/ingest` with a device token. Not started. After that: region tagging (FR-45), then the HausBuch bridge. The server hardware is ordered (see "ORDERED" above); still open is whether to write a PRD for the Buildertrend replacement, starting with a shared sign-in and job list.
 1. **Pick up here (stopped for the night 2026-09-18):** Trevor signs in at https://hauspalette.com
    first (becomes owner), drops one image to prove upload, R2 and tagging, and deletes the
