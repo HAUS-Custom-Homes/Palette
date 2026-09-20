@@ -131,7 +131,7 @@ project.
 
 ## Next steps
 
-0. **Flagged for 2026-09-19: decide on and order the server** (list and prices under "FLAGGED" above; re-check prices first). Also open: whether to write a PRD for the Buildertrend replacement, starting with a shared sign-in and job list; needs what HAUS pays Buildertrend and which modules the team really uses.
+0. **Next build item (stopped 2026-09-19 evening): email-in (FR-9)** via Cloudflare Email Routing to a Worker that POSTs attachments to `/api/ingest` with a device token. Not started. After that: region tagging (FR-45), then the HausBuch bridge. The server hardware is ordered (see "ORDERED" above); still open is whether to write a PRD for the Buildertrend replacement, starting with a shared sign-in and job list.
 1. **Pick up here (stopped for the night 2026-09-18):** Trevor signs in at https://hauspalette.com
    first (becomes owner), drops one image to prove upload, R2 and tagging, and deletes the
    downloaded Google `client_secret*.json` from Downloads. Then: delete or retarget the 502
