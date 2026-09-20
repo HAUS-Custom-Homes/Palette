@@ -7,8 +7,10 @@ import { addToBoard, boardsForItem, removeFromBoard } from "@/boards/boards";
 import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
 import { requeue, runTagQueue } from "@/ingest/tag-worker";
-import { getItem, postFor, similar } from "@/search/query";
-import { PlayIcon, SourceIcon, StackIcon, clock, displayName } from "../../ui/icons";
+import { getItem, postFor, postMedia, similar } from "@/search/query";
+import { displayName } from "../../ui/icons";
+import { captionOf } from "@/ingest/page-preview";
+import { Carousel } from "./carousel";
 import { Nav } from "../../ui/nav";
 import { AddTag } from "./add-tag";
 import { HausPicker } from "./haus-picker";
@@ -35,11 +37,39 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
   if (!data) notFound();
 
   const item = data.item as Record<string, string | number | null>;
+
+  // REF-02: a picture inside a post is reached through the post. An old link
+  // to one slide still works, and opens the post on that slide.
+  if (item.group_id && item.group_id !== id) {
+    const members = await postMedia(String(item.group_id));
+    const at = members.findIndex((m) => m.id === id);
+    redirect(`/item/${item.group_id}${at > 0 ? `?slide=${at + 1}` : ""}`);
+  }
+
   const tags = data.tags as unknown as Tag[];
   const like = await similar(id, 8);
   const post = await postFor(id);
-  const isVideo = (post?.mediaKind ?? "").startsWith("video");
-  const unsaved = post && !isVideo && post.slideCount ? Math.max(0, post.slideCount - post.siblings.length) : 0;
+  const media = await postMedia(id);
+  const startSlide = Math.max(0, Number(sp.slide ?? 1) - 1) || 0;
+  const isVideo = media.some((m) => m.videoSha || m.videoMissing);
+  const stills = media.filter((m) => m.frameTimeS == null).length;
+  const unsaved = post?.slideCount ? Math.max(0, post.slideCount - stills) : 0;
+
+  async function makeCover(formData: FormData) {
+    "use server";
+    const u = await requireUser();
+    if (u.role === "viewer") return;
+    const memberId = String(formData.get("memberId"));
+    const d2 = await db();
+    // Only ever within the member's own post.
+    await d2.query(
+      `UPDATE items SET is_cover = (id = $1)
+        WHERE COALESCE(group_id, id) = (SELECT COALESCE(group_id, id) FROM items WHERE id = $1)`,
+      [memberId],
+    );
+    revalidatePath("/");
+    revalidatePath(`/item/${id}`);
+  }
 
   const active = tags.filter((t) => !t.rejected && t.facetKey !== "project");
   const hausTags = tags.filter((t) => !t.rejected && t.facetKey === "project");
@@ -112,7 +142,8 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
     } else if (what === "remove") {
       const owner = await d.one<{ created_by: string }>(`SELECT created_by FROM items WHERE id = $1`, [itemId]);
       if (owner && (owner.created_by === u.id || u.role === "owner")) {
-        await d.query(`UPDATE items SET deleted_at = now() WHERE id = $1`, [itemId]);
+        // A post leaves the library whole. Nothing is erased: originals stay until a purge.
+        await d.query(`UPDATE items SET deleted_at = now() WHERE (id = $1 OR group_id = $1) AND deleted_at IS NULL`, [itemId]);
         await d.query(`INSERT INTO audit_events (actor_id, entity, entity_id, action) VALUES ($1, 'item', $2, 'soft_deleted')`, [u.id, itemId]);
         redirect("/");
       }
@@ -142,37 +173,16 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
 
       <div className="detail">
         <div>
-          <div className="photo">
-            <img src={`/api/asset/${item.sha256}/detail`} alt={String(item.caption_ai ?? "")} />
-            {post && (
-              <div className="tile-tl">
-                {isVideo ? (
-                  <span className="glass"><PlayIcon />{post.mediaKind === "video_frame" ? `Still from a video · ${clock(post.frameTimeS)}` : "Cover of a video"}</span>
-                ) : post.slideCount && post.slideCount > 1 ? (
-                  <span className="glass"><StackIcon />Slide {post.slideIndex ?? 1} of {post.slideCount}</span>
-                ) : null}
-              </div>
-            )}
-            {post && (post.authorHandle || post.kind !== "upload") && (
-              <div className="tile-tr"><span className="glass"><SourceIcon kind={post.kind} />{post.authorHandle ? `@${post.authorHandle.replace(/^@/, "")}` : post.kind}</span></div>
-            )}
-          </div>
+          {/* REF-02: the post, whole. */}
+          <Carousel media={media} start={startSlide} alt={displayName(item.caption_ai, item.title)}
+                    canEdit={user.role !== "viewer"} makeCover={makeCover} />
 
-          {/* A post is not an image: what else was saved from this one, and how
-              much of it is still out there. */}
-          {post && (post.siblings.length > 1 || unsaved > 0) && (
+          {unsaved > 0 && post?.sourceUrl && (
             <div className="strip">
-              <span className="lead">{isVideo ? "From this video" : "Also from this post"}</span>
-              {post.siblings.map((s) => (
-                <Link key={s.id} href={`/item/${s.id}`} className="s" data-on={s.id === id}>
-                  <img src={`/api/asset/${s.sha256}/thumb`} alt="" />
-                  {s.mediaKind === "video_frame" && <span className="t">{clock(s.frameTimeS)}</span>}
-                </Link>
-              ))}
-              {unsaved > 0 && <span className="s more">+{unsaved}</span>}
-              {unsaved > 0 && post.sourceUrl && (
-                <a className="go" href={post.sourceUrl} target="_blank" rel="noreferrer">Open the post to save the rest</a>
-              )}
+              <span className="lead" style={{ whiteSpace: "normal" }}>
+                {unsaved} more {unsaved === 1 ? "image" : "images"} in this post {unsaved === 1 ? "is" : "are"} not in Palette yet.
+              </span>
+              <a className="go" href={post.sourceUrl} target="_blank" rel="noreferrer">Open the post</a>
             </div>
           )}
 
@@ -206,21 +216,20 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
         </div>
 
         <div>
+          <div className="item-src">
+            {post?.sourceUrl && (
+              <a href={post.sourceUrl} target="_blank" rel="noreferrer">
+                View on {post.kind === "instagram" ? "Instagram" : post.kind === "pinterest" ? "Pinterest" : "the web"}
+              </a>
+            )}
+            <span>Saved by {String(item.ownerName ?? "someone")} · {String(item.captured_at ?? "").slice(0, 10)}</span>
+          </div>
           <h2 className="item-title">{displayName(item.caption_ai, item.title)}</h2>
           <p className="item-by">
-            Saved by {String(item.ownerName ?? "someone")} · {String(item.captured_at ?? "").slice(0, 10)} · original kept forever
+            {post?.authorHandle ? `@${post.authorHandle.replace(/^@/, "")} · ` : ""}
+            {media.length > 1 ? `${media.length} ${isVideo ? "items" : "images"} kept at full size` : isVideo && media[0]?.videoSha ? "video kept in Palette" : "original kept forever"}
           </p>
-
-          {isVideo && post && (
-            <div className="panel">
-              <h3>From a video</h3>
-              <p className="hint" style={{ margin: "0 0 10px" }}>
-                Palette keeps this frame forever. The video itself stays where it was posted, so if the post is
-                deleted the frame survives and the video does not.
-              </p>
-              {post.sourceUrl && <a className="btn" href={post.sourceUrl} target="_blank" rel="noreferrer">Open original</a>}
-            </div>
-          )}
+          {post?.captionText && <p className="item-cap">{captionOf(post.captionText)}</p>}
 
           {job?.state === "quarantined" && (
             <div className="panel" data-kind="attention">

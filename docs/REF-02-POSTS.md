@@ -1,6 +1,6 @@
 # REF-02: A post is a post
 
-Status: **proposed, waiting on Trevor's review of the mock** (2026-09-20). Supersedes the
+Status: **approved by Trevor on the mock ("way better, roll it out"), slices 1 to 3 built and deployed 2026-09-20.** Slice 4 (iPhone Shortcut) and the critic pass are next. Supersedes the
 "each slide is its own item, video is a still and a link" decision in HANDOFF (2026-09-20
 morning). That decision rested on a claim that was wrong: that Stasht does not keep media.
 
@@ -62,6 +62,16 @@ From the three research reports (sources in the session log):
 8. **Out of scope on purpose:** maps, calendar, reminders, public discovery, "what else we found".
 
 ## Data model
+
+**As built (simpler than first drawn, same behaviour):** every picture or video of a post is
+still its own `items` row, and `items.group_id` ties them into one post. The **lead** is the row
+whose `group_id` is its own id: it carries the title, haus, tags, notes and board spots.
+`is_cover` marks the member whose picture stands for the post; `group_pos` orders them. A video
+member's `asset_id` is its poster and `video_asset_id` is the file (`assets.duration_s`). Search
+lists leads only and looks inside each post for tags, colour, video and visual matches
+(`MEMBER`, `toPosts()` in `src/search/query.ts`). This kept search, embeddings, near-duplicate
+detection and the integrity scrub working per picture with no rewrite. The original sketch:
+
 
 - `items` stays the unit people see. New table `item_media (item_id, position, asset_id, kind
   image|video, poster_asset_id, duration_s, width, height, source_slide_index, frame_of_media_id,

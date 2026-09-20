@@ -76,7 +76,15 @@ export function postIdOf(url: string): string | undefined {
   return undefined;
 }
 
-export type EmbedSlide = { url: string; isVideo: boolean; width?: number; height?: number };
+export type EmbedSlide = {
+  url: string;
+  isVideo: boolean;
+  width?: number;
+  height?: number;
+  /** The video file, when the public page offers one. It expires within hours: download now or never. */
+  videoUrl?: string;
+  durationS?: number;
+};
 
 /** The address of the view Instagram publishes for embedding a post on any website. */
 export function embedUrlOf(url: string): string | undefined {
@@ -107,6 +115,7 @@ export function slidesFromEmbed(html: string): { slides: EmbedSlide[]; author?: 
   const slides: EmbedSlide[] = [];
   const seen = new Set<string>();
   const node = /\\"is_video\\":(true|false).{0,400}?\\"display_url\\":\\"(.*?)\\"|\\"display_url\\":\\"(.*?)\\"/gs;
+  const starts: number[] = [];
   for (const m of scope.matchAll(node)) {
     const url = unescapeTwice(m[2] ?? m[3] ?? "");
     if (!/^https:\/\//.test(url)) continue;
@@ -114,15 +123,41 @@ export function slidesFromEmbed(html: string): { slides: EmbedSlide[]; author?: 
     if (seen.has(key)) continue;
     seen.add(key);
     slides.push({ url, isVideo: m[1] === "true" });
+    starts.push(m.index ?? 0);
     // A single-image post has exactly one; do not wander into "more posts".
     if (at < 0) break;
   }
+  // A node's video fields follow its display_url, before the next node begins.
+  slides.forEach((s, i) => {
+    const seg = scope.slice(starts[i]!, starts[i + 1] ?? starts[i]! + 80_000);
+    const v = /\\"video_url\\":\\"(.*?)\\"/s.exec(seg)?.[1];
+    if (v) {
+      const videoUrl = unescapeTwice(v);
+      if (/^https:\/\//.test(videoUrl)) { s.videoUrl = videoUrl; s.isVideo = true; }
+    }
+    const dur = /\\"video_duration\\":([\d.]+)/.exec(seg)?.[1];
+    if (dur && s.isVideo) s.durationS = Number(dur);
+  });
   const dims = [...scope.matchAll(/\\"dimensions\\":\{\\"height\\":(\d+),\\"width\\":(\d+)\}/g)];
   slides.forEach((s, i) => {
     const d = dims[i];
     if (d) { s.height = Number(d[1]); s.width = Number(d[2]); }
   });
   return { slides: slides.slice(0, 20), author };
+}
+
+/** Instagram's description is `12 likes, 3 comments - handle on September 17, 2026: "the caption"`. Keep the caption. */
+export function captionOf(description: string): string {
+  const m = /^[\d.,KMkm]+ likes?, [\d.,KMkm]+ comments? - .{1,60}? on [A-Z][a-z]+ \d{1,2}, \d{4}:\s*["“]?([\s\S]*?)["”]?\.?\s*$/.exec(description.trim());
+  return (m?.[1] ?? description).trim().slice(0, 2000);
+}
+
+/** A caption of emoji or hashtags is not a title. Say whose post it is instead. */
+export function titleFor(candidate: string | undefined, author: string | undefined, isVideo: boolean): string | undefined {
+  const words = (candidate ?? "").replace(/#\S+/g, " ").match(/[\p{L}\p{N}]{2,}/gu) ?? [];
+  if (words.length >= 2) return candidate;
+  if (author) return `${isVideo ? "Video" : "Post"} by @${author.replace(/^@/, "")}`;
+  return undefined;
 }
 
 /** A caption is a paragraph; a title is its first sentence, or its first ninety characters at a word. */
@@ -169,7 +204,7 @@ export function previewFromHtml(html: string, pageUrl: string): PagePreview | nu
       slideIndex: postId && !isVideo ? 1 : undefined,
       mediaKind: isVideo ? "video_cover" : "image",
       authorHandle: author,
-      captionText: (m["og:description"] ?? "").slice(0, 2000) || undefined,
+      captionText: captionOf(m["og:description"] ?? "") || undefined,
       pageTitle: rawTitle.slice(0, 300) || undefined,
     },
   };

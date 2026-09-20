@@ -4,7 +4,7 @@ import { db } from "@/db/client";
 import { migrate } from "@/db/migrate";
 import { ingestBuffer, slideExternalId } from "@/ingest/ingest";
 import { upsertUser } from "@/lib/users";
-import { postFor, search } from "@/search/query";
+import { postFor, postMedia, search } from "@/search/query";
 
 /**
  * A post is not an image. Every slide of a multi-image post, and every frame
@@ -59,11 +59,41 @@ describe("a multi-image post", () => {
     expect((await postFor(cover.itemId))?.slideCount).toBe(5);
   });
 
-  it("tells the grid what to draw: position, how many are saved", async () => {
-    const tile = (await search({ limit: 50 })).items.find((i) => i.slideIndex === 3)!;
-    expect(tile.slideCount).toBe(8);
-    expect(tile.slidesSaved).toBe(2);
-    expect(tile.mediaKind).toBe("image");
+  it("is one card in the library, however many of its pictures are saved (REF-02)", async () => {
+    const d = await db();
+    const members = await d.query<{ id: string }>(
+      `SELECT i.id FROM items i JOIN sources s ON s.item_id = i.id WHERE s.post_id = 'ig:CAROUSEL' ORDER BY s.slide_index`);
+    const cards = (await search({ limit: 100 })).items.filter((i) => members.some((m) => m.id === i.id));
+    expect(cards).toHaveLength(1);
+    expect(cards[0]!.id).toBe(members[0]!.id);
+    expect(cards[0]!.mediaCount).toBe(2);
+    expect(cards[0]!.hasVideo).toBe(false);
+
+    const media = await postMedia(cards[0]!.id);
+    expect(media.map((m) => m.id)).toEqual(members.map((m) => m.id));
+    expect(media.filter((m) => m.isCover)).toHaveLength(1);
+  });
+
+  it("shows whichever picture was made the cover", async () => {
+    const d = await db();
+    const lead = (await search({ limit: 100 })).items.find((i) => i.mediaCount === 2)!;
+    const media = await postMedia(lead.id);
+    const second = media[1]!;
+    await d.query(`UPDATE items SET is_cover = (id = $2) WHERE group_id = $1`, [lead.id, second.id]);
+    const again = (await search({ limit: 100 })).items.find((i) => i.id === lead.id)!;
+    expect(again.sha256).toBe(second.sha256);
+  });
+
+  it("gives the haus chosen for a later slide to the post", async () => {
+    const d = await db();
+    await d.query(`INSERT INTO taxonomy_facets (key, label, is_multi, is_open, ai_tagged) VALUES ('project','Haus',true,true,false) ON CONFLICT (key) DO NOTHING`);
+    const { createOpenTerm } = await import("@/ai/apply-tags");
+    const { termId } = await createOpenTerm("project", "Carousel haus", user.id);
+    await ingestBuffer(await img(4), { userId: user.id, filename: "4.jpg", termIds: [termId], source: { kind: "instagram", postId: "ig:CAROUSEL", slideIndex: 4, slideCount: 8 } });
+    const found = await search({ facets: { project: ["carousel-haus"] }, limit: 10 });
+    expect(found.items).toHaveLength(1);
+    expect(found.items[0]!.mediaCount).toBe(3);
+    expect(found.items[0]!.haus).toBe("Carousel haus");
   });
 });
 
@@ -79,8 +109,36 @@ describe("a video post", () => {
     expect(info?.frameTimeS).toBeCloseTo(31.5);
     expect(info?.siblings.map((s) => s.id)).toEqual([cover.itemId, early.itemId, late.itemId]);
 
+    // One post, found by "From video", whichever of its members arrived first.
     const videos = await search({ videoOnly: true, limit: 50 });
-    expect(videos.items.map((i) => i.id).sort()).toEqual([late.itemId, cover.itemId, early.itemId].sort());
+    expect(videos.items).toHaveLength(1);
+    expect(videos.items[0]!.mediaCount).toBe(3);
+    expect(videos.items[0]!.hasVideo).toBe(true);
+  });
+
+  it("keeps the video file itself, immutable and under its own hash, and plays it from the poster's item", async () => {
+    const d = await db();
+    const fakeMp4 = Buffer.concat([Buffer.from("00000018667479706d703432", "hex"), Buffer.from("palette test video bytes")]);
+    const r = await ingestBuffer(await img(17), {
+      userId: user.id, filename: "poster.jpg",
+      source: { kind: "instagram", postId: "ig:PLAYS", mediaKind: "video_cover" },
+      video: { buffer: fakeMp4, mime: "video/mp4", width: 720, height: 1280, durationS: 35 },
+    });
+    const [m] = await postMedia(r.itemId);
+    expect(m!.videoMime).toBe("video/mp4");
+    expect(m!.videoSeconds).toBe(35);
+    expect(m!.videoMissing).toBe(false);
+    const { store } = await import("@/storage/object-store");
+    const row = await d.one<{ storage_key: string }>(`SELECT storage_key FROM assets WHERE sha256 = $1`, [m!.videoSha]);
+    expect((await store().get(row!.storage_key)).equals(fakeMp4)).toBe(true);
+
+    const card = (await search({ videoOnly: true, limit: 50 })).items.find((i) => i.id === r.itemId)!;
+    expect(card.videoSeconds).toBe(35);
+  });
+
+  it("says so when only the cover of a video could be kept", async () => {
+    const r = await ingestBuffer(await img(18), { userId: user.id, filename: "cover-only.jpg", source: { kind: "instagram", postId: "ig:NOFILE", mediaKind: "video_cover" } });
+    expect((await postMedia(r.itemId))[0]!.videoMissing).toBe(true);
   });
 });
 

@@ -36,9 +36,31 @@ export async function GET(_req: NextRequest, ctx: { params: Promise<{ sha: strin
 
   try {
     const bytes = await store().get(key);
+
+    // A video element asks for byte ranges, and will not seek without them.
+    // R2 answers ranges itself through the signed URL; the local store does it here.
+    const range = /^bytes=(\d*)-(\d*)$/.exec(_req.headers.get("range") ?? "");
+    if (range && original && asset.mime_type.startsWith("video/")) {
+      const size = bytes.byteLength;
+      const start = range[1] ? Number(range[1]) : Math.max(0, size - Number(range[2] || 0));
+      const end = range[1] && range[2] ? Math.min(Number(range[2]), size - 1) : size - 1;
+      if (start > end || start >= size) return new Response(null, { status: 416, headers: { "content-range": `bytes */${size}` } });
+      return new Response(new Uint8Array(bytes.subarray(start, end + 1)), {
+        status: 206,
+        headers: {
+          "content-type": asset.mime_type,
+          "content-range": `bytes ${start}-${end}/${size}`,
+          "accept-ranges": "bytes",
+          "content-length": String(end - start + 1),
+          "cache-control": "private, max-age=31536000, immutable",
+        },
+      });
+    }
+
     return new Response(new Uint8Array(bytes), {
       headers: {
         "content-type": original ? asset.mime_type : "image/webp",
+        "accept-ranges": "bytes",
         // Content-addressed, so the bytes behind this URL can never change.
         "cache-control": "private, max-age=31536000, immutable",
       },

@@ -69,6 +69,10 @@ export type ItemRow = {
   sourceKind: string | null;
   ownerName: string | null;
   needsReview: number;
+  /** REF-02: how many pictures and videos the post holds, and whether one is a video. */
+  mediaCount: number;
+  hasVideo: boolean;
+  videoSeconds: number | null;
   /** What the tile draws over the photograph. */
   haus: string | null;
   tags: Array<{ label: string; suggested: boolean }> | null;
@@ -87,8 +91,23 @@ function toTsQuery(q: string): string {
   return words.map((w, i) => (i === words.length - 1 ? `${w}:*` : w)).join(" & ");
 }
 
+/** m is the post row itself or a member of the post it leads. */
+const MEMBER = `(m.id = i.id OR (m.group_id = i.id AND m.deleted_at IS NULL AND m.variant_of IS NULL))`;
+
+/** Picture-level ids (from the vector index, the colour scan) resolved to the posts they belong to, order kept. */
+async function toPosts(ids: string[]): Promise<string[]> {
+  if (!ids.length) return ids;
+  const d = await db();
+  const rows = await d.query<{ id: string; post: string }>(
+    `SELECT id, COALESCE(group_id, id) AS post FROM items WHERE id = ANY($1::uuid[])`, [ids]);
+  const post = new Map(rows.map((r) => [r.id, r.post]));
+  return [...new Set(ids.map((id) => post.get(id) ?? id))];
+}
+
 function buildWhere(p: SearchParams, startAt = 1, opts: { skipText?: boolean } = {}) {
-  const wheres: string[] = ["i.deleted_at IS NULL", "i.variant_of IS NULL"];
+  // REF-02: a row here is a post. A member of a post is reached through its
+  // lead, so filters below look at "this row or anything in its group".
+  const wheres: string[] = ["i.deleted_at IS NULL", "i.variant_of IS NULL", "(i.group_id IS NULL OR i.group_id = i.id)"];
   const params: unknown[] = [];
   let n = startAt;
 
@@ -106,7 +125,8 @@ function buildWhere(p: SearchParams, startAt = 1, opts: { skipText?: boolean } =
       `EXISTS (SELECT 1 FROM item_terms it
                  JOIN taxonomy_terms t ON t.id = it.term_id
                  JOIN taxonomy_facets f ON f.id = t.facet_id
-                WHERE it.item_id = i.id AND it.rejected = false AND it.suggested = false
+                 JOIN items m ON m.id = it.item_id
+                WHERE ${MEMBER} AND it.rejected = false AND it.suggested = false
                   AND f.key = $${n++} AND t.slug = ANY($${n++}::text[]))`,
     );
     params.push(facetKey, slugs);
@@ -131,7 +151,8 @@ function buildWhere(p: SearchParams, startAt = 1, opts: { skipText?: boolean } =
   }
 
   if (p.videoOnly) {
-    wheres.push(`EXISTS (SELECT 1 FROM sources sv WHERE sv.item_id = i.id AND sv.media_kind LIKE 'video%')`);
+    wheres.push(`EXISTS (SELECT 1 FROM items m LEFT JOIN sources sv ON sv.item_id = m.id
+                          WHERE ${MEMBER} AND (m.video_asset_id IS NOT NULL OR sv.media_kind LIKE 'video%'))`);
   }
 
   if (p.colorIds) {
@@ -160,6 +181,11 @@ const ITEM_SELECT = `
                -- on a picture of a study). Fine as a review prompt, wrong on the tile.
                AND (it.source = 'human' OR it.model_version IS NULL OR it.model_version NOT LIKE 'heuristic%')
              ORDER BY it.suggested, (it.source = 'human') DESC, it.confidence DESC LIMIT 3) x) AS tags,
+         (SELECT count(*)::int FROM items m WHERE ${MEMBER}) AS "mediaCount",
+         (SELECT va.duration_s FROM items m JOIN assets va ON va.id = m.video_asset_id WHERE ${MEMBER}
+           ORDER BY m.group_pos NULLS LAST LIMIT 1) AS "videoSeconds",
+         EXISTS (SELECT 1 FROM items m LEFT JOIN sources sv ON sv.item_id = m.id
+                  WHERE ${MEMBER} AND (m.video_asset_id IS NOT NULL OR sv.media_kind LIKE 'video%')) AS "hasVideo",
          ps.slide_index AS "slideIndex", ps.slide_count AS "slideCount",
          ps.media_kind AS "mediaKind", ps.frame_time_s AS "frameTimeS",
          (SELECT count(DISTINCT s2.item_id)::int FROM sources s2 JOIN items i2 ON i2.id = s2.item_id
@@ -167,7 +193,10 @@ const ITEM_SELECT = `
          (SELECT count(*)::int FROM item_terms it
            WHERE it.item_id = i.id AND it.source = 'ai' AND (it.confidence < ${config.reviewConfidenceThreshold} OR it.suggested)) AS "needsReview"
     FROM items i
-    JOIN assets a ON a.id = i.asset_id
+    JOIN assets a ON a.id = COALESCE(
+           (SELECT c.asset_id FROM items c
+             WHERE c.group_id = i.id AND c.is_cover AND c.deleted_at IS NULL AND c.variant_of IS NULL LIMIT 1),
+           i.asset_id)
     LEFT JOIN users u ON u.id = i.created_by
     LEFT JOIN LATERAL (SELECT s.post_id, s.slide_index, s.slide_count, s.media_kind, s.frame_time_s
                          FROM sources s WHERE s.item_id = i.id AND s.post_id IS NOT NULL
@@ -179,7 +208,8 @@ export async function search(p0: SearchParams): Promise<{ items: ItemRow[]; tota
   const offset = p0.offset ?? 0;
   // Colour is resolved to ids once, up front, so every branch below and the
   // facet counts see the same restriction.
-  const colorIds = p0.nearColor ? await idsNearColor(p0.nearColor) : null;
+  const colorIdsRaw = p0.nearColor ? await idsNearColor(p0.nearColor) : null;
+  const colorIds = colorIdsRaw ? await toPosts(colorIdsRaw) : null;
   const p: SearchParams = { ...p0, colorIds: colorIds ?? undefined };
   if (p0.nearColor && (!colorIds || colorIds.length === 0)) return { items: [], total: 0 };
 
@@ -200,7 +230,7 @@ export async function search(p0: SearchParams): Promise<{ items: ItemRow[]; tota
     // images that merely look proportionate. fuse() is kept for the case where
     // both lists are long and neither is exact, which is the semantic query.
     const lexIds = lexical.map((r) => r.id);
-    const semIds = semantic.map((s) => s.itemId);
+    const semIds = await toPosts(semantic.map((s) => s.itemId));
     const fused = lexIds.length && lexIds.length <= 5
       ? [...lexIds, ...semIds.filter((id) => !lexIds.includes(id))]
       : fuse([lexIds, semIds]);
@@ -245,7 +275,8 @@ export type FacetCount = {
  */
 export async function facetCounts(p0: SearchParams): Promise<FacetCount[]> {
   const d = await db();
-  const colorIds = p0.nearColor ? await idsNearColor(p0.nearColor) : null;
+  const colorIdsRaw = p0.nearColor ? await idsNearColor(p0.nearColor) : null;
+  const colorIds = colorIdsRaw ? await toPosts(colorIdsRaw) : null;
   const p: SearchParams = { ...p0, colorIds: colorIds ?? undefined };
   const facets = await d.query<{ id: string; key: string; label: string; is_multi: boolean; is_open: boolean }>(
     `SELECT id, key, label, is_multi, is_open FROM taxonomy_facets ORDER BY sort_order`,
@@ -329,11 +360,43 @@ export async function getItem(id: string) {
  * FR-31. Looks like this one: by vector when the item has one, else by
  * shared tags, which is at least explainable.
  */
+export type PostMedia = {
+  id: string;
+  sha256: string;
+  width: number | null;
+  height: number | null;
+  blurhash: string | null;
+  isCover: boolean;
+  /** Present when Palette holds the video file itself. */
+  videoSha: string | null;
+  videoMime: string | null;
+  videoSeconds: number | null;
+  /** A video Palette could only keep the cover of. */
+  videoMissing: boolean;
+  frameTimeS: number | null;
+};
+
+/** REF-02. Everything in a post, in the order it was posted; stills taken from a video come last. */
+export async function postMedia(leadId: string): Promise<PostMedia[]> {
+  const d = await db();
+  return d.query<PostMedia>(
+    `SELECT m.id, a.sha256, a.width, a.height, a.blurhash, m.is_cover AS "isCover",
+            va.sha256 AS "videoSha", va.mime_type AS "videoMime", va.duration_s AS "videoSeconds",
+            (m.video_asset_id IS NULL AND EXISTS (SELECT 1 FROM sources s WHERE s.item_id = m.id AND s.media_kind = 'video_cover')) AS "videoMissing",
+            (SELECT s.frame_time_s FROM sources s WHERE s.item_id = m.id AND s.media_kind = 'video_frame' LIMIT 1) AS "frameTimeS"
+       FROM items m JOIN assets a ON a.id = m.asset_id LEFT JOIN assets va ON va.id = m.video_asset_id
+      WHERE (m.id = $1 OR m.group_id = $1) AND m.deleted_at IS NULL AND m.variant_of IS NULL
+      ORDER BY m.group_pos NULLS LAST, m.captured_at, m.id`,
+    [leadId],
+  );
+}
+
 export type PostInfo = {
   postId: string;
   kind: string;
   sourceUrl: string | null;
   authorHandle: string | null;
+  captionText: string | null;
   slideIndex: number | null;
   slideCount: number | null;
   mediaKind: string;
@@ -347,6 +410,7 @@ export async function postFor(itemId: string): Promise<PostInfo | null> {
   const d = await db();
   const me = await d.one<Omit<PostInfo, "siblings">>(
     `SELECT post_id AS "postId", kind::text AS kind, source_url AS "sourceUrl", author_handle AS "authorHandle",
+            caption_text AS "captionText",
             slide_index AS "slideIndex", slide_count AS "slideCount", media_kind AS "mediaKind",
             frame_time_s AS "frameTimeS"
        FROM sources WHERE item_id = $1 AND post_id IS NOT NULL ORDER BY fetched_at LIMIT 1`,

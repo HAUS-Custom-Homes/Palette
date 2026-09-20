@@ -5,7 +5,7 @@ import { derive } from "@/derive/pipeline";
 import { reindexItem } from "@/search/index-item";
 import { nearDuplicates } from "@/search/query";
 import { originalKey, sha256, store } from "@/storage/object-store";
-import { PREVIEW_UA, cleanUrl, embedUrlOf, postIdOf, previewFromHtml, slidesFromEmbed, type PagePreview } from "./page-preview";
+import { PREVIEW_UA, cleanUrl, embedUrlOf, postIdOf, previewFromHtml, slidesFromEmbed, titleFor, type PagePreview } from "./page-preview";
 
 /**
  * REF-01 FR-3, FR-5, FR-11, FR-21, FR-22.
@@ -57,6 +57,9 @@ export type IngestResult = {
   queuedForTagging: boolean;
 };
 
+/** A Reel from the public page is 3 to 15MB. This is a guard against the absurd, not a budget. */
+const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
+
 const MIME_BY_EXT: Record<string, string> = {
   ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png", ".webp": "image/webp",
   ".gif": "image/gif", ".avif": "image/avif", ".heic": "image/heic", ".tif": "image/tiff", ".tiff": "image/tiff",
@@ -73,6 +76,8 @@ export async function ingestBuffer(
     source: SourceInfo;
     /** Term ids to apply as human tags on arrival, e.g. a haus. */
     termIds?: string[];
+    /** REF-02. The video this image is the poster of. Kept as its own immutable original. */
+    video?: { buffer: Buffer; mime: string; width?: number; height?: number; durationS?: number };
   },
 ): Promise<IngestResult> {
   const d = await db();
@@ -92,8 +97,25 @@ export async function ingestBuffer(
     if (existingItem) {
       await attachSource(existingItem.id, opts.source);
       await applyHumanTerms(existingItem.id, opts.termIds, opts.userId);
+      if (opts.video) await attachVideo(existingItem.id, opts.video);
+      await joinPost(existingItem.id, opts.source, opts.userId);
       await reindexItem(existingItem.id);
       return { itemId: existingItem.id, assetId: existingAsset.id, sha256: hash, duplicate: true, queuedForTagging: false };
+    }
+    // Removed earlier (an Undo, a change of mind) and now saved again: it comes
+    // back as it was, with its place in its post, rather than as a stranger.
+    const removed = await d.one<{ id: string }>(
+      `SELECT id FROM items WHERE asset_id = $1 AND deleted_at IS NOT NULL ORDER BY deleted_at DESC LIMIT 1`,
+      [existingAsset.id],
+    );
+    if (removed) {
+      await d.query(`UPDATE items SET deleted_at = NULL, captured_at = now() WHERE id = $1`, [removed.id]);
+      await attachSource(removed.id, opts.source);
+      await applyHumanTerms(removed.id, opts.termIds, opts.userId);
+      if (opts.video) await attachVideo(removed.id, opts.video);
+      await joinPost(removed.id, opts.source, opts.userId);
+      await reindexItem(removed.id);
+      return { itemId: removed.id, assetId: existingAsset.id, sha256: hash, duplicate: false, queuedForTagging: false };
     }
   }
 
@@ -147,6 +169,8 @@ export async function ingestBuffer(
 
   await attachSource(itemId, opts.source);
   await applyHumanTerms(itemId, opts.termIds, opts.userId);
+  if (opts.video) await attachVideo(itemId, opts.video);
+  await joinPost(itemId, opts.source, opts.userId);
 
   // ---- 7. FR-5: tagging is queued, never awaited on the capture path ------
   await d.query(
@@ -204,6 +228,63 @@ async function attachSource(itemId: string, s0: SourceInfo) {
   }
 }
 
+/**
+ * REF-02. A video is kept the way an image is: the untouched bytes, under
+ * their own hash, immutable, covered by the integrity scrub. It has no
+ * derivatives; the item's image asset is its poster.
+ */
+async function attachVideo(itemId: string, v: NonNullable<Parameters<typeof ingestBuffer>[1]["video"]>) {
+  const d = await db();
+  const hash = sha256(v.buffer);
+  let asset = await d.one<{ id: string }>(`SELECT id FROM assets WHERE sha256 = $1`, [hash]);
+  if (!asset) {
+    const key = originalKey(hash, v.mime === "video/webm" ? ".webm" : ".mp4");
+    await store().put(key, v.buffer, v.mime);
+    asset = await d.one<{ id: string }>(
+      `INSERT INTO assets (sha256, storage_key, mime_type, byte_size, width, height, duration_s)
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
+      [hash, key, v.mime, v.buffer.byteLength, v.width ?? null, v.height ?? null, v.durationS ?? null],
+    );
+  }
+  await d.query(`UPDATE items SET video_asset_id = $2 WHERE id = $1 AND video_asset_id IS NULL`, [itemId, asset!.id]);
+}
+
+/**
+ * REF-02. Everything saved from one post is one thing to the person looking
+ * at the library. The first member to arrive leads; later ones join it. What
+ * a person attached at save time (the haus) goes to the lead, because that is
+ * where the post's tags live.
+ */
+async function joinPost(itemId: string, s: SourceInfo, userId: string) {
+  const postId = s.postId ?? (["instagram", "pinterest"].includes(s.kind) ? s.externalId : undefined);
+  if (!postId) return;
+  const d = await db();
+  const mine = await d.one<{ group_id: string | null; variant_of: string | null }>(
+    `SELECT group_id, variant_of FROM items WHERE id = $1`, [itemId]);
+  if (!mine || mine.group_id || mine.variant_of) return;
+
+  const lead = await d.one<{ group_id: string }>(
+    `SELECT i.group_id FROM sources so JOIN items i ON i.id = so.item_id
+      WHERE so.kind = $1 AND so.post_id = $2 AND i.id <> $3
+        AND i.group_id IS NOT NULL AND i.deleted_at IS NULL LIMIT 1`,
+    [s.kind, postId, itemId],
+  );
+  const pos = s.slideIndex ?? (s.mediaKind === "video_frame" ? 1000 + Math.round(s.frameTimeS ?? 0) : 1);
+  if (!lead) {
+    await d.query(`UPDATE items SET group_id = id, group_pos = $2, is_cover = true WHERE id = $1`, [itemId, pos]);
+    return;
+  }
+  await d.query(`UPDATE items SET group_id = $2, group_pos = $3 WHERE id = $1`, [itemId, lead.group_id, pos]);
+  await d.query(
+    `INSERT INTO item_terms (item_id, term_id, confidence, source, set_by)
+     SELECT $2, term_id, 1.0, 'human', COALESCE(set_by, $3) FROM item_terms
+      WHERE item_id = $1 AND source = 'human' AND NOT rejected
+     ON CONFLICT (item_id, term_id) DO NOTHING`,
+    [itemId, lead.group_id, userId],
+  );
+  await reindexItem(lead.group_id);
+}
+
 /** The better copy of the same picture takes over everything a person attached to the old one. */
 async function supersede(oldId: string, newId: string) {
   const d = await db();
@@ -225,6 +306,16 @@ async function supersede(oldId: string, newId: string) {
          FROM items o WHERE n.id = $2 AND o.id = $1`,
       [oldId, newId],
     );
+    // Its place in the post too: lead, cover and position all pass to the better copy.
+    const old = (await tx.query<{ group_id: string | null; group_pos: number | null; is_cover: boolean }>(
+      `SELECT group_id, group_pos, is_cover FROM items WHERE id = $1`, [oldId]))[0];
+    if (old?.group_id) {
+      const wasLead = old.group_id === oldId;
+      await tx.query(`UPDATE items SET group_id = $2, group_pos = $3, is_cover = $4 WHERE id = $1`,
+        [newId, wasLead ? newId : old.group_id, old.group_pos, old.is_cover]);
+      if (wasLead) await tx.query(`UPDATE items SET group_id = $2 WHERE group_id = $1 AND id <> $1`, [oldId, newId]);
+      await tx.query(`UPDATE items SET group_id = NULL, is_cover = false WHERE id = $1`, [oldId]);
+    }
     await tx.query(`UPDATE items SET variant_of = $2 WHERE id = $1`, [oldId, newId]);
   });
 }
@@ -311,12 +402,28 @@ async function ingestWholePost(
     const img = await fetch(slide.url, { headers: { ...headers, accept: "image/*" } });
     const type = (img.headers.get("content-type") ?? "").split(";")[0].trim();
     if (!img.ok || !type.startsWith("image/")) continue;
+
+    // The file's address expires within hours, so it is fetched now or never.
+    // A video Palette cannot get is still saved, as its cover (REF-02 decision 3).
+    let video: Parameters<typeof ingestBuffer>[1]["video"];
+    if (slide.videoUrl) {
+      try {
+        const vr = await fetch(slide.videoUrl, { headers });
+        const vt = (vr.headers.get("content-type") ?? "").split(";")[0].trim();
+        const size = Number(vr.headers.get("content-length") ?? 0);
+        if (vr.ok && vt.startsWith("video/") && size < MAX_VIDEO_BYTES) {
+          video = { buffer: Buffer.from(await vr.arrayBuffer()), mime: vt, width: slide.width, height: slide.height, durationS: slide.durationS };
+        }
+      } catch { /* keep the cover */ }
+    }
+
     results.push(
       await ingestBuffer(Buffer.from(await img.arrayBuffer()), {
         userId,
+        video,
         filename: new URL(slide.url).pathname.split("/").pop() ?? `slide-${i + 1}.jpg`,
         mime: type,
-        title: preview?.title,
+        title: titleFor(preview?.title, author ?? preview?.source.authorHandle, slides.some((s) => s.isVideo)),
         note: extra.note,
         termIds: extra.termIds,
         source: {

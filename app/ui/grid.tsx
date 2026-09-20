@@ -162,7 +162,7 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
         {col.map((i) => {
           const it = items[i]!;
           const on = selected.has(it.id);
-          const isVideo = (it.mediaKind ?? "").startsWith("video");
+          const isVideo = it.hasVideo;
           return (
             <div className="card" id={`card-${it.id}`} key={it.id} data-selected={on} data-focus={i === focus}>
               <Link href={`/item/${it.id}`} onClick={(e) => { if (e.shiftKey || e.metaKey || e.ctrlKey) { e.preventDefault(); toggle(it.id); } }}>
@@ -175,25 +175,17 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
                 {it.needsReview > 0 && <span className="review-dot" title={`${it.needsReview} tag${it.needsReview === 1 ? "" : "s"} to review`} />}
               </div>
               <div className="tile-tr">
+                {/* REF-02: a card is a post. One mark says what is inside it. */}
                 {isVideo ? (
-                  <span className="glass" title="A still from a video"><PlayIcon />{it.mediaKind === "video_frame" ? clock(it.frameTimeS) : "video"}</span>
-                ) : it.slideCount && it.slideCount > 1 ? (
-                  <span className="glass" title={`${it.slidesSaved ?? 1} of this post's ${it.slideCount} images are saved`}>
-                    <StackIcon />{it.slideIndex ?? 1} of {it.slideCount}
-                  </span>
-                ) : (it.slidesSaved ?? 0) > 1 ? (
-                  <span className="glass" title="More from the same post"><StackIcon />{it.slidesSaved}</span>
+                  <span className="glass" title="Video"><PlayIcon />{it.videoSeconds ? clock(it.videoSeconds) : it.mediaCount > 1 ? it.mediaCount : ""}</span>
+                ) : it.mediaCount > 1 ? (
+                  <span className="glass" title={`${it.mediaCount} images in this post`}><StackIcon />{it.mediaCount}</span>
                 ) : ["instagram", "pinterest", "web", "share"].includes(it.sourceKind ?? "") ? (
                   <span className="glass"><SourceIcon kind={it.sourceKind} /></span>
                 ) : null}
               </div>
               <div className="tile-meta">
                 <h3>{displayName(it.captionAi, it.title)}</h3>
-                {it.tags && it.tags.length > 0 && (
-                  <div className="tile-tags">
-                    {it.tags.map((t) => <span className="ttag" key={t.label} data-suggested={t.suggested}>{t.label}</span>)}
-                  </div>
-                )}
               </div>
             </div>
           );

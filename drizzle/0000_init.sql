@@ -317,6 +317,45 @@ ALTER TABLE sources ADD COLUMN IF NOT EXISTS slide_count  integer;
 ALTER TABLE sources ADD COLUMN IF NOT EXISTS media_kind   text NOT NULL DEFAULT 'image';
 ALTER TABLE sources ADD COLUMN IF NOT EXISTS frame_time_s real;
 CREATE INDEX IF NOT EXISTS sources_post_idx ON sources (post_id);
+-- REF-02: a post is a post. Every picture or video of one post is still its
+-- own row (so search, embeddings, integrity and near-duplicate detection keep
+-- working per picture), and group_id ties them into the one thing a person
+-- sees. The lead is the row whose group_id is its own id: it carries the
+-- title, the haus, the tags, the notes and the board memberships. is_cover
+-- marks the member whose picture stands for the post.
+ALTER TABLE items  ADD COLUMN IF NOT EXISTS group_id       uuid REFERENCES items(id);
+ALTER TABLE items  ADD COLUMN IF NOT EXISTS group_pos      integer;
+ALTER TABLE items  ADD COLUMN IF NOT EXISTS is_cover       boolean NOT NULL DEFAULT false;
+-- A video member: asset_id is its poster image, video_asset_id is the file.
+ALTER TABLE items  ADD COLUMN IF NOT EXISTS video_asset_id uuid REFERENCES assets(id);
+ALTER TABLE assets ADD COLUMN IF NOT EXISTS duration_s     real;
+CREATE INDEX IF NOT EXISTS items_group_idx ON items (group_id);
+
 -- Rows saved before posts were modelled: the external id was the post id.
 UPDATE sources SET post_id = external_id
  WHERE post_id IS NULL AND external_id IS NOT NULL AND kind IN ('instagram', 'pinterest');
+
+-- Rows saved before posts were whole: gather each post's pictures under the
+-- earliest slide. Idempotent: only touches rows that have no group yet.
+WITH leads AS (
+  SELECT DISTINCT ON (s.kind, s.post_id) s.kind, s.post_id,
+         COALESCE((SELECT g.group_id FROM sources s2 JOIN items g ON g.id = s2.item_id
+                    WHERE s2.kind = s.kind AND s2.post_id = s.post_id AND g.group_id IS NOT NULL LIMIT 1),
+                  s.item_id) AS lead
+    FROM sources s JOIN items i ON i.id = s.item_id
+   WHERE s.post_id IS NOT NULL AND i.deleted_at IS NULL AND i.variant_of IS NULL
+   ORDER BY s.kind, s.post_id, COALESCE(s.slide_index, 0), COALESCE(s.frame_time_s, 0), s.fetched_at
+)
+UPDATE items i SET group_id = l.lead, group_pos = COALESCE(s.slide_index, 1)
+  FROM sources s JOIN leads l ON l.kind = s.kind AND l.post_id = s.post_id
+ WHERE s.item_id = i.id AND i.group_id IS NULL AND i.deleted_at IS NULL AND i.variant_of IS NULL;
+
+UPDATE items SET is_cover = true
+ WHERE group_id = id AND NOT EXISTS (SELECT 1 FROM items c WHERE c.group_id = items.group_id AND c.is_cover);
+
+-- What a person said about one slide (its haus, a tag) now belongs to the post.
+INSERT INTO item_terms (item_id, term_id, confidence, source, set_by, rejected)
+SELECT i.group_id, it.term_id, 1.0, 'human', it.set_by, false
+  FROM item_terms it JOIN items i ON i.id = it.item_id
+ WHERE i.group_id IS NOT NULL AND i.group_id <> i.id AND it.source = 'human' AND NOT it.rejected
+ON CONFLICT (item_id, term_id) DO NOTHING;

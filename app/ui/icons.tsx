@@ -12,6 +12,10 @@ export const PinterestIcon = () => (<svg {...base}><circle cx="12" cy="12" r="9"
 export const GlobeIcon = () => (<svg {...base}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.800 3 2.800 15 0 18M12 3c-2.800 3-2.800 15 0 18" /></svg>);
 export const PhoneIcon = () => (<svg {...base}><rect x="7" y="3" width="10" height="18" rx="2.500" /><path d="M11 18h2" /></svg>);
 
+export const MutedIcon = () => (<svg {...base} width={18} height={18}><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="m17 9 5 6M22 9l-5 6" /></svg>);
+export const SoundIcon = () => (<svg {...base} width={18} height={18}><path d="M4 9h4l5-4v14l-5-4H4z" /><path d="M17 8.500a5 5 0 0 1 0 7M19.800 6a9 9 0 0 1 0 12" /></svg>);
+export const ExpandIcon = () => (<svg {...base} width={18} height={18}><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5" /></svg>);
+
 export function SourceIcon({ kind }: { kind: string | null }) {
   if (kind === "instagram") return <InstagramIcon />;
   if (kind === "pinterest") return <PinterestIcon />;

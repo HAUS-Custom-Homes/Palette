@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse, after } from "next/server";
 import { resolveOpenTermIds } from "@/ai/apply-tags";
 import { currentUser } from "@/auth";
+import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
 import { resolveDeviceToken, type User } from "@/lib/users";
 import { ingestBuffer, ingestLink, ingestUrl, type SourceInfo } from "@/ingest/ingest";
@@ -132,5 +133,18 @@ export async function POST(req: NextRequest) {
   // Post-response work that survives the response ending (Vercel-safe).
   after(() => runTagQueue(10).catch(() => {}));
 
-  return NextResponse.json({ saved, duplicates, variants, failed, errors, itemId: lastItemId });
+  // What the confirmation shows: the post as the person will see it in the library.
+  let post: { id: string; sha256: string; title: string | null; count: number } | null = null;
+  if (lastItemId) {
+    const d = await db();
+    post = await d.one(
+      `SELECT l.id, a.sha256, l.title,
+              (SELECT count(*)::int FROM items m WHERE (m.id = l.id OR m.group_id = l.id) AND m.deleted_at IS NULL AND m.variant_of IS NULL) AS count
+         FROM items i JOIN items l ON l.id = COALESCE(i.group_id, i.id) JOIN assets a ON a.id = l.asset_id
+        WHERE i.id = $1`,
+      [lastItemId],
+    );
+  }
+
+  return NextResponse.json({ saved, duplicates, variants, failed, errors, itemId: post?.id ?? lastItemId, post });
 }
