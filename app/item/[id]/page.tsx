@@ -7,7 +7,8 @@ import { addToBoard, boardsForItem, removeFromBoard } from "@/boards/boards";
 import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
 import { requeue, runTagQueue } from "@/ingest/tag-worker";
-import { getItem, similar } from "@/search/query";
+import { getItem, postFor, similar } from "@/search/query";
+import { PlayIcon, SourceIcon, StackIcon, clock, displayName } from "../../ui/icons";
 import { Nav } from "../../ui/nav";
 import { AddTag } from "./add-tag";
 import { HausPicker } from "./haus-picker";
@@ -36,6 +37,9 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
   const item = data.item as Record<string, string | number | null>;
   const tags = data.tags as unknown as Tag[];
   const like = await similar(id, 8);
+  const post = await postFor(id);
+  const isVideo = (post?.mediaKind ?? "").startsWith("video");
+  const unsaved = post && !isVideo && post.slideCount ? Math.max(0, post.slideCount - post.siblings.length) : 0;
 
   const active = tags.filter((t) => !t.rejected && t.facetKey !== "project");
   const hausTags = tags.filter((t) => !t.rejected && t.facetKey === "project");
@@ -118,16 +122,16 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
   return (
     <div>
       <Nav user={user} />
-      <div className="topbar" style={{ top: 44 }}>
+      <div className="page">
+      <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 0 14px" }}>
         <Link className="btn" href="/">Back to library</Link>
-        <span className="hint">{String(item.caption_ai ?? item.title ?? "untitled")}</span>
         {sp.shared && <span className="pill">saved from your phone</span>}
       </div>
 
       {/* A share from the phone skips the capture form, so the one question
           only a person can answer is asked here, once, and is skippable. */}
       {sp.shared && hausTags.length === 0 && user.role !== "viewer" && (
-        <div className="notice" data-kind="attention" style={{ margin: "12px 16px 0" }}>
+        <div className="notice" data-kind="attention" style={{ margin: "0 0 16px" }}>
           <b>Saved. Which haus is this for?</b>{" "}
           <span className="hint">Optional. Pick one, type a new one, or just leave.</span>
           <div style={{ marginTop: 8 }}>
@@ -138,7 +142,40 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
 
       <div className="detail">
         <div>
-          <img src={`/api/asset/${item.sha256}/detail`} alt={String(item.caption_ai ?? "")} />
+          <div className="photo">
+            <img src={`/api/asset/${item.sha256}/detail`} alt={String(item.caption_ai ?? "")} />
+            {post && (
+              <div className="tile-tl">
+                {isVideo ? (
+                  <span className="glass"><PlayIcon />{post.mediaKind === "video_frame" ? `Still from a video · ${clock(post.frameTimeS)}` : "Cover of a video"}</span>
+                ) : post.slideCount && post.slideCount > 1 ? (
+                  <span className="glass"><StackIcon />Slide {post.slideIndex ?? 1} of {post.slideCount}</span>
+                ) : null}
+              </div>
+            )}
+            {post && (post.authorHandle || post.kind !== "upload") && (
+              <div className="tile-tr"><span className="glass"><SourceIcon kind={post.kind} />{post.authorHandle ? `@${post.authorHandle.replace(/^@/, "")}` : post.kind}</span></div>
+            )}
+          </div>
+
+          {/* A post is not an image: what else was saved from this one, and how
+              much of it is still out there. */}
+          {post && (post.siblings.length > 1 || unsaved > 0) && (
+            <div className="strip">
+              <span className="lead">{isVideo ? "From this video" : "Also from this post"}</span>
+              {post.siblings.map((s) => (
+                <Link key={s.id} href={`/item/${s.id}`} className="s" data-on={s.id === id}>
+                  <img src={`/api/asset/${s.sha256}/thumb`} alt="" />
+                  {s.mediaKind === "video_frame" && <span className="t">{clock(s.frameTimeS)}</span>}
+                </Link>
+              ))}
+              {unsaved > 0 && <span className="s more">+{unsaved}</span>}
+              {unsaved > 0 && post.sourceUrl && (
+                <a className="go" href={post.sourceUrl} target="_blank" rel="noreferrer">Open the post to save the rest</a>
+              )}
+            </div>
+          )}
+
           {like.length > 0 && (
             <div className="panel" style={{ marginTop: 14 }}>
               <h3>More like this</h3>
@@ -157,6 +194,22 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
         </div>
 
         <div>
+          <h2 className="item-title">{displayName(item.caption_ai, item.title)}</h2>
+          <p className="item-by">
+            Saved by {String(item.ownerName ?? "someone")} · {String(item.captured_at ?? "").slice(0, 10)} · original kept forever
+          </p>
+
+          {isVideo && post && (
+            <div className="panel">
+              <h3>From a video</h3>
+              <p className="hint" style={{ margin: "0 0 10px" }}>
+                Palette keeps this frame forever. The video itself stays where it was posted, so if the post is
+                deleted the frame survives and the video does not.
+              </p>
+              {post.sourceUrl && <a className="btn" href={post.sourceUrl} target="_blank" rel="noreferrer">Open original</a>}
+            </div>
+          )}
+
           {job?.state === "quarantined" && (
             <div className="panel" data-kind="attention">
               <h3>Could not be tagged</h3>
@@ -341,6 +394,7 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
             </div>
           )}
         </div>
+      </div>
       </div>
     </div>
   );

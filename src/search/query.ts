@@ -23,6 +23,8 @@ export type SearchParams = {
   ownerId?: string;
   /** Only items captured in the last N days ("new this week"). */
   sinceDays?: number;
+  /** Only stills that came from a video post. */
+  videoOnly?: boolean;
   /** FR-25. A hex colour; items whose dominant palette comes near it. */
   nearColor?: string;
   /** Internal: nearColor resolved to item ids. */
@@ -67,6 +69,15 @@ export type ItemRow = {
   sourceKind: string | null;
   ownerName: string | null;
   needsReview: number;
+  /** What the tile draws over the photograph. */
+  haus: string | null;
+  tags: Array<{ label: string; suggested: boolean }> | null;
+  slideIndex: number | null;
+  slideCount: number | null;
+  /** How many slides of this item's post are in the library. */
+  slidesSaved: number | null;
+  mediaKind: string | null;
+  frameTimeS: number | null;
 };
 
 /** Postgres websearch_to_tsquery handles quotes and OR; we add prefix on the last word. */
@@ -119,6 +130,10 @@ function buildWhere(p: SearchParams, startAt = 1, opts: { skipText?: boolean } =
     params.push(String(Math.min(365, Math.floor(p.sinceDays))));
   }
 
+  if (p.videoOnly) {
+    wheres.push(`EXISTS (SELECT 1 FROM sources sv WHERE sv.item_id = i.id AND sv.media_kind LIKE 'video%')`);
+  }
+
   if (p.colorIds) {
     wheres.push(`i.id = ANY($${n++}::uuid[])`);
     params.push(p.colorIds);
@@ -133,11 +148,27 @@ const ITEM_SELECT = `
          i.captured_at::text AS "capturedAt",
          (SELECT kind::text FROM sources s WHERE s.item_id = i.id LIMIT 1) AS "sourceKind",
          u.name AS "ownerName",
+         (SELECT t.label FROM item_terms it JOIN taxonomy_terms t ON t.id = it.term_id
+            JOIN taxonomy_facets f ON f.id = t.facet_id
+           WHERE it.item_id = i.id AND f.key = 'project' AND NOT it.rejected
+           ORDER BY it.created_at LIMIT 1) AS haus,
+         (SELECT json_agg(x) FROM (
+            SELECT t.label, it.suggested FROM item_terms it
+              JOIN taxonomy_terms t ON t.id = it.term_id JOIN taxonomy_facets f ON f.id = t.facet_id
+             WHERE it.item_id = i.id AND NOT it.rejected AND f.key NOT IN ('project', 'image_type')
+             ORDER BY it.suggested, (it.source = 'human') DESC, it.confidence DESC LIMIT 3) x) AS tags,
+         ps.slide_index AS "slideIndex", ps.slide_count AS "slideCount",
+         ps.media_kind AS "mediaKind", ps.frame_time_s AS "frameTimeS",
+         (SELECT count(DISTINCT s2.item_id)::int FROM sources s2 JOIN items i2 ON i2.id = s2.item_id
+           WHERE s2.post_id = ps.post_id AND i2.deleted_at IS NULL) AS "slidesSaved",
          (SELECT count(*)::int FROM item_terms it
            WHERE it.item_id = i.id AND it.source = 'ai' AND (it.confidence < ${config.reviewConfidenceThreshold} OR it.suggested)) AS "needsReview"
     FROM items i
     JOIN assets a ON a.id = i.asset_id
-    LEFT JOIN users u ON u.id = i.created_by`;
+    LEFT JOIN users u ON u.id = i.created_by
+    LEFT JOIN LATERAL (SELECT s.post_id, s.slide_index, s.slide_count, s.media_kind, s.frame_time_s
+                         FROM sources s WHERE s.item_id = i.id AND s.post_id IS NOT NULL
+                        ORDER BY s.fetched_at LIMIT 1) ps ON true`;
 
 export async function search(p0: SearchParams): Promise<{ items: ItemRow[]; total: number }> {
   const d = await db();
@@ -295,6 +326,42 @@ export async function getItem(id: string) {
  * FR-31. Looks like this one: by vector when the item has one, else by
  * shared tags, which is at least explainable.
  */
+export type PostInfo = {
+  postId: string;
+  kind: string;
+  sourceUrl: string | null;
+  authorHandle: string | null;
+  slideIndex: number | null;
+  slideCount: number | null;
+  mediaKind: string;
+  frameTimeS: number | null;
+  /** Everything in the library from the same post, this item included, in slide order. */
+  siblings: Array<{ id: string; sha256: string; slideIndex: number | null; frameTimeS: number | null; mediaKind: string }>;
+};
+
+/** The post an item came from, and what else was saved from it. */
+export async function postFor(itemId: string): Promise<PostInfo | null> {
+  const d = await db();
+  const me = await d.one<Omit<PostInfo, "siblings">>(
+    `SELECT post_id AS "postId", kind::text AS kind, source_url AS "sourceUrl", author_handle AS "authorHandle",
+            slide_index AS "slideIndex", slide_count AS "slideCount", media_kind AS "mediaKind",
+            frame_time_s AS "frameTimeS"
+       FROM sources WHERE item_id = $1 AND post_id IS NOT NULL ORDER BY fetched_at LIMIT 1`,
+    [itemId],
+  );
+  if (!me) return null;
+  const siblings = await d.query<PostInfo["siblings"][number]>(
+    `SELECT DISTINCT ON (i.id) i.id, a.sha256, s.slide_index AS "slideIndex", s.frame_time_s AS "frameTimeS",
+            s.media_kind AS "mediaKind"
+       FROM sources s JOIN items i ON i.id = s.item_id JOIN assets a ON a.id = i.asset_id
+      WHERE s.post_id = $1 AND s.kind::text = $2 AND i.deleted_at IS NULL
+      ORDER BY i.id, s.fetched_at`,
+    [me.postId, me.kind],
+  );
+  siblings.sort((x, y) => (x.slideIndex ?? 0) - (y.slideIndex ?? 0) || (x.frameTimeS ?? 0) - (y.frameTimeS ?? 0));
+  return { ...me, siblings };
+}
+
 export async function similar(itemId: string, limit = 12): Promise<Array<{ id: string; sha256: string; shared: number; how: "vector" | "tags" }>> {
   const d = await db();
   const near = await similarByVector(itemId, limit);

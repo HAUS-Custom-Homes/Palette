@@ -70,6 +70,8 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
   is open to the world; a middleware rule that covers `/api` breaks every bearer-token client.
 - URL parameters on the library page must never reuse a facet key (`color`, `space`, `style`...):
   `parse()` reads every facet key as a filter. Colour search is `?near=` for that reason.
+- **A post is not an image.** Each saved slide or video frame is its own item; `sources.post_id` groups them and the server makes the per-slide `external_id`. Never fold two items from the same post into each other as near-duplicates. Palette never stores video files: a still and a link.
+- **The look lives in two files:** tokens in `app/globals.css`, every v2 component rule in `app/look.css` (imported after, so it wins by order). The photograph is the tile; text sits on it. Do not add a build-time font dependency: fonts load at run time so a build never needs the network.
 - Each person owns their images. Quarantine and review lists are filtered by `created_by`.
   Never build a page that shows one person another person's "Needs me".
 - Edit `.ts`, `.tsx` and `.sql` with the Edit/Write tools, never through shell heredocs or `sed`.

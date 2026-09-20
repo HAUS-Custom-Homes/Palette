@@ -78,6 +78,82 @@ async function init() {
     $("collection").hidden = false;
     $("scan").addEventListener("click", scan);
   }
+
+  if (page.post?.video) setupVideo(tab.id, best);
+  else if (page.post?.carousel) setupCarousel(tab.id, best);
+}
+
+const clock = (s: number) => `${Math.floor(s / 60)}:${String(Math.round(s) % 60).padStart(2, "0")}`;
+
+/** A multi-image post: this slide, or all of them (reviewed before anything is saved). */
+function setupCarousel(tabId: number, best: Candidate | null) {
+  const post = page!.post!;
+  $("post").hidden = false;
+  $("save-best").hidden = true;
+  $("post-kind").textContent = post.slideCount
+    ? `Multi-image post, ${post.slideCount} slides${post.slideIndex ? `. You are on slide ${post.slideIndex}.` : "."}`
+    : "Multi-image post.";
+
+  $("post-a").textContent = "Save this slide";
+  $("post-a").onclick = () => best && saveOne({ ...best, slideIndex: post.slideIndex, slideCount: post.slideCount });
+
+  $("post-b").textContent = post.slideCount ? `Save all ${post.slideCount}` : "Save all slides";
+  $("post-b").onclick = async () => {
+    $<HTMLButtonElement>("post-b").disabled = true;
+    say("stepping through the slides...");
+    const res = (await browser.tabs.sendMessage(tabId, { type: "collect-slides" })) as { slides: Candidate[]; count: number };
+    if (!res.slides.length) { say("Could not read the slides on this page.", "err"); return; }
+
+    let chosen = new Set(res.slides.map((s) => s.src));
+    const render = () => {
+      $("slides").innerHTML = "";
+      for (const s of res.slides) {
+        $("slides").appendChild(thumb(s, chosen.has(s.src), () => { chosen.has(s.src) ? chosen.delete(s.src) : chosen.add(s.src); render(); }));
+      }
+      $("slides-save").textContent = `Save ${chosen.size} to ${$<HTMLSelectElement>("haus").selectedOptions[0]?.textContent ?? "any haus"}`;
+    };
+    render();
+    say(`${res.slides.length} slides found. Click any you do not want.`);
+    $("slides-row").hidden = false;
+    $("slides-all").onclick = () => { chosen = new Set(res.slides.map((s) => s.src)); render(); };
+    $("slides-none").onclick = () => { chosen.clear(); render(); };
+    $("haus").addEventListener("change", render);
+    $("slides-save").onclick = async () => {
+      const picked = res.slides.filter((s) => chosen.has(s.src));
+      if (!picked.length) return;
+      $<HTMLButtonElement>("slides-save").disabled = true;
+      say(`saving ${picked.length}...`);
+      const s = (await browser.runtime.sendMessage({ type: "save-many", candidates: picked, page, haus: $<HTMLSelectElement>("haus").value || undefined })) as
+        { saved: number; duplicates: number; failed: number; errors: string[] };
+      say(`${s.saved} saved, ${s.duplicates} already there, ${s.failed} failed${s.errors[0] ? ` (${s.errors[0]})` : ""}.`, s.failed ? "err" : "ok");
+      $<HTMLButtonElement>("slides-save").disabled = false;
+    };
+  };
+}
+
+/** A video post: its cover, or the frame that is on screen right now. */
+function setupVideo(tabId: number, best: Candidate | null) {
+  const video = page!.post!.video!;
+  $("post").hidden = false;
+  $("save-best").hidden = true;
+  $("post-kind").textContent = `Video post, ${video.paused ? "paused" : "playing"} at ${clock(video.timeS)}. Palette keeps a still, not the video.`;
+
+  const cover: Candidate | null = video.poster
+    ? { src: video.poster, width: 1080, height: 1080, mediaKind: "video_cover" }
+    : best ? { ...best, mediaKind: "video_cover" } : null;
+  $("post-a").textContent = "Save cover";
+  $<HTMLButtonElement>("post-a").disabled = !cover;
+  $("post-a").onclick = () => cover && saveOne(cover);
+
+  $("post-b").textContent = "Save this frame";
+  $("post-b").onclick = async () => {
+    say("capturing the frame on screen...");
+    const r = (await browser.runtime.sendMessage({ type: "save-frame", tabId, page, haus: $<HTMLSelectElement>("haus").value || undefined })) as
+      | { ok: true; duplicates: number }
+      | { ok: false; error: string };
+    if (r.ok) say(r.duplicates ? "That frame is already in the library." : "Frame saved. Scrub to another moment and save again if you like.", "ok");
+    else say(r.error, "err");
+  };
 }
 
 async function scan() {

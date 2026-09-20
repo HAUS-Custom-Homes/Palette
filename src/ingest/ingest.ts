@@ -25,7 +25,27 @@ export type SourceInfo = {
   boardName?: string;
   sectionName?: string;
   pageTitle?: string;
+  /** Groups slides and frames saved from one post, e.g. "ig:CODE". */
+  postId?: string;
+  /** 1-based position in a multi-image post, and how many the post holds. */
+  slideIndex?: number;
+  slideCount?: number;
+  mediaKind?: "image" | "video_cover" | "video_frame";
+  /** Seconds into the video a frame was taken at. */
+  frameTimeS?: number;
 };
+
+/**
+ * One source row per saved slide or frame, so the second slide of a post
+ * keeps its provenance instead of colliding with the first. A capture that
+ * names no post keeps whatever external id it sent.
+ */
+export function slideExternalId(s: SourceInfo): string | undefined {
+  if (!s.postId) return s.externalId;
+  if (s.mediaKind === "video_frame" && s.frameTimeS != null) return `${s.postId}@${s.frameTimeS.toFixed(1)}`;
+  if (s.slideIndex != null) return `${s.postId}#${s.slideIndex}`;
+  return s.externalId ?? s.postId;
+}
 
 export type IngestResult = {
   itemId: string;
@@ -106,8 +126,14 @@ export async function ingestBuffer(
           WHERE i.asset_id = $1 AND i.deleted_at IS NULL AND i.variant_of IS NULL LIMIT 1`,
         [near[0].id],
       );
+      // Two slides of one post, or two frames of one video, were each saved on
+      // purpose. However alike they look, neither hides the other.
+      const postId = opts.source.postId ?? (["instagram", "pinterest"].includes(opts.source.kind) ? opts.source.externalId : undefined);
+      const sameBatch = canonical && postId
+        ? await d.one(`SELECT 1 AS x FROM sources WHERE item_id = $1 AND post_id = $2 LIMIT 1`, [canonical.id, postId])
+        : null;
       // The higher-resolution copy keeps the canonical slot.
-      if (canonical && (canonical.width ?? 0) >= dv.width) variantOf = canonical.id;
+      if (canonical && !sameBatch && (canonical.width ?? 0) >= dv.width) variantOf = canonical.id;
     }
   }
 
@@ -132,16 +158,33 @@ export async function ingestBuffer(
   return { itemId, assetId, sha256: hash, duplicate: false, variantOf, queuedForTagging: true };
 }
 
-async function attachSource(itemId: string, s: SourceInfo) {
+async function attachSource(itemId: string, s0: SourceInfo) {
   const d = await db();
+  // An older extension, or the saved-list scan, names the post only through
+  // its external id ("ig:CODE"). For the two sites that have posts, that is
+  // the post.
+  const s: SourceInfo =
+    !s0.postId && s0.externalId && (s0.kind === "instagram" || s0.kind === "pinterest")
+      ? { ...s0, postId: s0.externalId }
+      : s0;
   await d.query(
     `INSERT INTO sources (item_id, kind, source_url, external_id, author_handle, author_url,
-                          caption_text, board_name, section_name, page_title)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+                          caption_text, board_name, section_name, page_title,
+                          post_id, slide_index, slide_count, media_kind, frame_time_s)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
      ON CONFLICT (kind, external_id) DO NOTHING`,
-    [itemId, s.kind, s.sourceUrl ?? null, s.externalId ?? null, s.authorHandle ?? null, s.authorUrl ?? null,
-     s.captionText ?? null, s.boardName ?? null, s.sectionName ?? null, s.pageTitle ?? null],
+    [itemId, s.kind, s.sourceUrl ?? null, slideExternalId(s) ?? null, s.authorHandle ?? null, s.authorUrl ?? null,
+     s.captionText ?? null, s.boardName ?? null, s.sectionName ?? null, s.pageTitle ?? null,
+     s.postId ?? null, s.slideIndex ?? null, s.slideCount ?? null, s.mediaKind ?? "image", s.frameTimeS ?? null],
   );
+  // A later save from the same post may be the first to learn how many slides
+  // it has (the saved-list scan only ever sees the cover). Tell its siblings.
+  if (s.postId && s.slideCount) {
+    await d.query(
+      `UPDATE sources SET slide_count = $1 WHERE post_id = $2 AND kind = $3 AND (slide_count IS NULL OR slide_count < $1)`,
+      [s.slideCount, s.postId, s.kind],
+    );
+  }
 }
 
 async function applyHumanTerms(itemId: string, termIds: string[] | undefined, userId: string) {

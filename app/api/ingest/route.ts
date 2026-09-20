@@ -22,6 +22,16 @@ async function whoIs(req: NextRequest): Promise<User | null> {
   return currentUser();
 }
 
+const MEDIA = new Set(["image", "video_cover", "video_frame"]);
+const intField = (v: string | undefined, min: number, max: number) => {
+  const n = Number.parseInt(v ?? "", 10);
+  return Number.isFinite(n) && n >= min && n <= max ? n : undefined;
+};
+const numField = (v: string | undefined) => {
+  const n = Number.parseFloat(v ?? "");
+  return Number.isFinite(n) && n >= 0 && n < 86_400 ? n : undefined;
+};
+
 export async function POST(req: NextRequest) {
   await boot();
   const user = await whoIs(req);
@@ -66,6 +76,13 @@ export async function POST(req: NextRequest) {
     captionText: field("caption_text")?.slice(0, 2000),
     boardName: field("board_name"),
     pageTitle: field("page_title")?.slice(0, 300),
+    // A post is not an image: which post, which slide of how many, and whether
+    // this is a still taken from a video.
+    postId: field("post_id")?.slice(0, 200),
+    slideIndex: intField(field("slide_index"), 1, 50),
+    slideCount: intField(field("slide_count"), 1, 50),
+    mediaKind: (MEDIA.has(field("media_kind") ?? "") ? field("media_kind") : undefined) as SourceInfo["mediaKind"],
+    frameTimeS: numField(field("frame_time_s")),
   };
 
   let saved = 0, duplicates = 0, variants = 0, failed = 0;

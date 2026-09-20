@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { dedupeByPost, externalIdFor, filenameFor, isCollectionPage, largestFromSrcset, pickBest, plausible, siteFor } from "../lib/resolve";
+import { cropFor, dedupeByPost, externalIdFor, filenameFor, isCollectionPage, largestFromSrcset, oddOneOut, pickBest, plausible, siteFor } from "../lib/resolve";
 
 describe("site detection", () => {
   it("recognises the two platforms and everything else", () => {
@@ -66,5 +66,28 @@ describe("choosing the image", () => {
     expect(filenameFor("https://cdn/x/abc.webp?x=1")).toBe("abc.webp");
     expect(filenameFor("https://cdn/x/abc")).toBe("abc.jpg");
     expect(filenameFor("nope")).toBe("clip.jpg");
+  });
+});
+
+describe("carousel position from indicator dots", () => {
+  it("is the one dot styled differently, 1-based", () => {
+    expect(oddOneOut(["d", "d", "d on", "d", "d"])).toBe(3);
+    expect(oddOneOut(["x on", "x", "x"])).toBe(1);
+  });
+  it("says nothing when the row is ambiguous", () => {
+    expect(oddOneOut(["a", "b"])).toBeUndefined();
+    expect(oddOneOut(["a", "a", "a"])).toBeUndefined();
+    expect(oddOneOut(["a", "b", "c"])).toBeUndefined();
+    expect(oddOneOut(["a"])).toBeUndefined();
+  });
+});
+
+describe("cropping a tab screenshot to the video", () => {
+  it("scales css pixels to device pixels", () => {
+    expect(cropFor({ x: 100, y: 50, width: 400, height: 500 }, 2, 2000, 2000)).toEqual({ x: 200, y: 100, width: 800, height: 1000 });
+  });
+  it("clamps to the screenshot and refuses a sliver", () => {
+    expect(cropFor({ x: -20, y: 10, width: 400, height: 900 }, 1, 800, 600)).toEqual({ x: 0, y: 10, width: 380, height: 590 });
+    expect(cropFor({ x: 700, y: 10, width: 400, height: 400 }, 1, 800, 600)).toBeNull();
   });
 });

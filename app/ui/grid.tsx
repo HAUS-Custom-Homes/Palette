@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { ItemRow } from "@/search/query";
+import { PlayIcon, SourceIcon, StackIcon, clock, displayName } from "./icons";
 
 /**
  * REF-01 FR-28, FR-30, FR-32, FR-36.
@@ -129,6 +130,7 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
       <div className="grid">
         {items.map((it, i) => {
           const on = selected.has(it.id);
+          const isVideo = (it.mediaKind ?? "").startsWith("video");
           return (
             <div className="card" id={`card-${it.id}`} key={it.id} data-selected={on} data-focus={i === focus}>
               <Link href={`/item/${it.id}`} onClick={(e) => { if (e.shiftKey || e.metaKey || e.ctrlKey) { e.preventDefault(); toggle(it.id); } }}>
@@ -136,14 +138,31 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
                      width={it.width ?? 400} height={it.height ?? 300} loading="lazy" />
               </Link>
               <button type="button" className="select-dot" data-on={on} title="Select (x)" onClick={() => toggle(it.id)}>{on ? "✓" : ""}</button>
-              <div className="badges">
-                {it.needsReview > 0 && <span className="badge" data-kind="review">review</span>}
-                {it.sourceKind && it.sourceKind !== "upload" && <span className="badge">{it.sourceKind}</span>}
+              <div className="tile-tl">
+                {it.haus && <span className="glass haus">{it.haus}</span>}
+                {it.needsReview > 0 && <span className="review-dot" title={`${it.needsReview} tag${it.needsReview === 1 ? "" : "s"} to review`} />}
               </div>
-              <figcaption>
-                {it.captionAi ?? it.title ?? "untitled"}
-                {it.ownerName && <span className="by"> · {it.ownerName}</span>}
-              </figcaption>
+              <div className="tile-tr">
+                {isVideo ? (
+                  <span className="glass" title="A still from a video"><PlayIcon />{it.mediaKind === "video_frame" ? clock(it.frameTimeS) : "video"}</span>
+                ) : it.slideCount && it.slideCount > 1 ? (
+                  <span className="glass" title={`${it.slidesSaved ?? 1} of this post's ${it.slideCount} images are saved`}>
+                    <StackIcon />{it.slideIndex ?? 1} of {it.slideCount}
+                  </span>
+                ) : (it.slidesSaved ?? 0) > 1 ? (
+                  <span className="glass" title="More from the same post"><StackIcon />{it.slidesSaved}</span>
+                ) : ["instagram", "pinterest", "web", "share"].includes(it.sourceKind ?? "") ? (
+                  <span className="glass"><SourceIcon kind={it.sourceKind} /></span>
+                ) : null}
+              </div>
+              <div className="tile-meta">
+                <h3>{displayName(it.captionAi, it.title)}</h3>
+                {it.tags && it.tags.length > 0 && (
+                  <div className="tile-tags">
+                    {it.tags.map((t) => <span className="ttag" key={t.label} data-suggested={t.suggested}>{t.label}</span>)}
+                  </div>
+                )}
+              </div>
             </div>
           );
         })}

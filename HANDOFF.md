@@ -1,5 +1,5 @@
 # Handoff
-Last updated: 2026-09-19 on Trevor_Lenovo
+Last updated: 2026-09-20 on Trevor_Lenovo
 
 ## Current state
 
@@ -113,6 +113,13 @@ project.
 - Rank fusion interleaved eleven vaguely similar images ahead of the one note that contained
   the word typed. Few exact hits now lead; fusion is kept for long, inexact queries.
 
+### Built 2026-09-20: new look, multi-image posts, video stills
+- **Look v2**, after Trevor said he loves Stasht's polish. True-black canvas, the photograph is the whole tile, caption and up to three tags overlaid on a bottom fade, frosted pills on the image (brass pill = the haus, stack badge = "3 of 8", play badge = video time), 20px corners, DM Sans with Fraunces for the wordmark and item titles, brass accent kept. The left facet rail is gone: one big search pill, then a row of pill filters (hauses first, then Mine, New this week, From video, Review, then a dropdown per facet, which becomes a bottom sheet on phones). Setup pages moved behind the avatar menu. Tokens are in `app/globals.css`; every component rule for the new look is in **`app/look.css`**, imported after it. Fonts load at run time from Google Fonts, never at build time.
+- **A post is not an image.** `sources` gained `post_id`, `slide_index`, `slide_count`, `media_kind` (image, video_cover, video_frame) and `frame_time_s`. The server builds a per-slide external id (`ig:CODE#3`, `ig:CODE@14.2`), which fixes a real bug: the second slide saved from a post used to lose its provenance to the one-row-per-post unique key. `postFor()` returns the post and its saved siblings; the item page shows an "Also from this post" strip with a "+N, open the post to save the rest" marker. Two images from the same post are never folded into each other as near-duplicates.
+- **Video: a still and a link, never the file.** Decision made with Trevor: he cares about images, a Reel is 20 to 100MB, and neither Stasht nor Sprink keeps the video either (Stasht says the save dies with the post). The item page says so in plain words. `?video=1` filters for stills from video.
+- **Extension:** on an open multi-image post, "Save this slide" or "Save all N" (it presses the post's own back and next buttons, shows every slide for review, then saves the chosen ones to one haus). On a video, "Save cover" or "Save this frame": the tab is photographed and cropped to the player, because a page cannot read pixels from a cross-origin video; the player's overlays are hidden for that instant and restored. **Untested against live Instagram** (needs Trevor's signed-in browser): the selectors lean on aria-labels ("Next", "Go back") and on the indicator dots, and are the likeliest thing to need a tweak.
+- 52 root tests, 12 extension tests, tsc, verify and `next build` clean.
+
 ### Built 2026-09-19 (while the server ships)
 - **Text in images is searchable (FR-24)** with no OCR dependency: the tagging call now also returns `visible_text`, stored in `items.ocr_text` (already in `search_tsv`) and shown on the item page. `PROMPT_VERSION` is `tag-v2`. Needs `ANTHROPIC_API_KEY`; the heuristic tagger reads nothing and never blanks existing text. Images tagged before this need `npm run tag -- --all` to gain it.
 - **A smart board per haus (FR-46):** `createOpenTerm('project', ...)` calls `ensureHausBoard()`; boot backfills any haus without one. The boards list now shows a real count and cover for smart boards.
@@ -131,7 +138,7 @@ project.
 
 ## Next steps
 
-0. **Next build item (stopped 2026-09-19 evening): email-in (FR-9)** via Cloudflare Email Routing to a Worker that POSTs attachments to `/api/ingest` with a device token. Not started. After that: region tagging (FR-45), then the HausBuch bridge. The server hardware is ordered (see "ORDERED" above); still open is whether to write a PRD for the Buildertrend replacement, starting with a shared sign-in and job list.
+0. **First real-world check of 2026-09-20's work:** Trevor reloads the unpacked extension (`extension/.output/chrome-mv3` after `npm run build` in `extension/`), opens a multi-image Instagram post and a Reel, and tries the four buttons. Then **email-in (FR-9)** via Cloudflare Email Routing to a Worker that POSTs attachments to `/api/ingest` with a device token. Not started. After that: region tagging (FR-45), then the HausBuch bridge. The server hardware is ordered (see "ORDERED" above); still open is whether to write a PRD for the Buildertrend replacement, starting with a shared sign-in and job list.
 1. **Pick up here (stopped for the night 2026-09-18):** Trevor signs in at https://hauspalette.com
    first (becomes owner), drops one image to prove upload, R2 and tagging, and deletes the
    downloaded Google `client_secret*.json` from Downloads. Then: delete or retarget the 502

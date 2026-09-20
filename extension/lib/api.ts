@@ -44,19 +44,7 @@ export async function saveCandidate(
   opts: { haus?: string; note?: string } = {},
 ): Promise<SaveResult> {
   const s = await auth();
-  const postUrl = c.postUrl ?? page.url;
-  const externalId = externalIdFor(page.site, postUrl) ?? `${page.site}:${postUrl}`;
-
-  const fd = new FormData();
-  fd.append("source_kind", page.site);
-  fd.append("source_url", postUrl);
-  fd.append("external_id", externalId);
-  if (page.author) fd.append("author_handle", page.author);
-  if (page.caption) fd.append("caption_text", page.caption);
-  if (page.board) fd.append("board_name", page.board);
-  if (page.title) fd.append("page_title", page.title);
-  if (opts.haus) fd.append("haus", opts.haus);
-  if (opts.note) fd.append("note", opts.note);
+  const fd = provenance(c, page, opts);
 
   let fetched = false;
   try {
@@ -69,7 +57,54 @@ export async function saveCandidate(
     /* fall through to url */
   }
   if (!fetched) fd.append("url", c.src);
+  return send(s, fd);
+}
 
+/** A frame captured from the screen: the bytes are already in hand. */
+export async function saveBlob(
+  blob: Blob,
+  filename: string,
+  c: Omit<Candidate, "src" | "width" | "height">,
+  page: Pick<PageInfo, "url" | "title" | "site" | "author" | "caption" | "board">,
+  opts: { haus?: string; note?: string } = {},
+): Promise<SaveResult> {
+  const s = await auth();
+  const fd = provenance(c, page, opts);
+  fd.append("files", blob, filename);
+  return send(s, fd);
+}
+
+/**
+ * Where it came from. The post id groups every slide and frame saved from one
+ * post; the server makes the per-slide id from it, so a second slide never
+ * collides with the first.
+ */
+function provenance(
+  c: Pick<Candidate, "postUrl" | "slideIndex" | "slideCount" | "mediaKind" | "frameTimeS">,
+  page: Pick<PageInfo, "url" | "title" | "site" | "author" | "caption" | "board">,
+  opts: { haus?: string; note?: string },
+): FormData {
+  const postUrl = c.postUrl ?? page.url;
+  const postId = externalIdFor(page.site, postUrl);
+  const fd = new FormData();
+  fd.append("source_kind", page.site);
+  fd.append("source_url", postUrl);
+  fd.append("external_id", postId ?? `${page.site}:${postUrl}`);
+  if (postId) fd.append("post_id", postId);
+  if (c.slideIndex) fd.append("slide_index", String(c.slideIndex));
+  if (c.slideCount) fd.append("slide_count", String(c.slideCount));
+  if (c.mediaKind) fd.append("media_kind", c.mediaKind);
+  if (c.frameTimeS != null) fd.append("frame_time_s", c.frameTimeS.toFixed(1));
+  if (page.author) fd.append("author_handle", page.author);
+  if (page.caption) fd.append("caption_text", page.caption);
+  if (page.board) fd.append("board_name", page.board);
+  if (page.title) fd.append("page_title", page.title);
+  if (opts.haus) fd.append("haus", opts.haus);
+  if (opts.note) fd.append("note", opts.note);
+  return fd;
+}
+
+async function send(s: { host: string; token: string }, fd: FormData): Promise<SaveResult> {
   const res = await fetch(`${s.host}/api/ingest`, {
     method: "POST",
     headers: { authorization: `Bearer ${s.token}` },

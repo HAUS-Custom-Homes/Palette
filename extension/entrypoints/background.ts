@@ -1,6 +1,6 @@
-import { saveCandidate } from "../lib/api";
-import type { Candidate, PageInfo } from "../lib/resolve";
-import { pickBest, siteFor } from "../lib/resolve";
+import { saveBlob, saveCandidate, type SaveResult } from "../lib/api";
+import type { Candidate, PageInfo, Rect } from "../lib/resolve";
+import { cropFor, pickBest, siteFor } from "../lib/resolve";
 
 /**
  * The worker. Owns the context menus and every network call, because it is
@@ -45,6 +45,8 @@ export default defineBackground(() => {
         }
         notify("Palette import", `${summary.saved} saved, ${summary.duplicates} already there, ${summary.failed} failed.`);
         sendResponse(summary);
+      } else if (msg.type === "save-frame") {
+        sendResponse(await saveFrame(msg.tabId, msg.page, msg.haus));
       }
     })().catch((err) => sendResponse({ ok: false, error: (err as Error).message }));
     return true;
@@ -53,7 +55,37 @@ export default defineBackground(() => {
 
 type Message =
   | { type: "save"; candidate: Candidate; page: PageInfo; haus?: string; note?: string }
-  | { type: "save-many"; candidates: Candidate[]; page: PageInfo; haus?: string };
+  | { type: "save-many"; candidates: Candidate[]; page: PageInfo; haus?: string }
+  | { type: "save-frame"; tabId: number; page: PageInfo; haus?: string };
+
+/**
+ * The frame on screen, as the person sees it. A page may not read pixels out
+ * of a cross-origin video, so the tab is photographed and cropped to the
+ * player. The content script hides the player's overlays for that instant
+ * and is always told to put them back, whatever happens in between.
+ */
+async function saveFrame(tabId: number, page: PageInfo, haus?: string): Promise<SaveResult> {
+  const prep = (await browser.tabs.sendMessage(tabId, { type: "prepare-frame" })) as
+    | { rect: Rect; dpr: number; timeS: number }
+    | null;
+  if (!prep) return { ok: false, error: "No video on this page." };
+  try {
+    // One paint, so the hidden overlays are really gone from the picture.
+    await new Promise((r) => setTimeout(r, 120));
+    const tab = await browser.tabs.get(tabId);
+    const shot = await browser.tabs.captureVisibleTab(tab.windowId, { format: "png" });
+    const bitmap = await createImageBitmap(await (await fetch(shot)).blob());
+    const crop = cropFor(prep.rect, prep.dpr, bitmap.width, bitmap.height);
+    if (!crop) return { ok: false, error: "The video is not fully on screen. Scroll it into view and try again." };
+    const canvas = new OffscreenCanvas(crop.width, crop.height);
+    canvas.getContext("2d")!.drawImage(bitmap, crop.x, crop.y, crop.width, crop.height, 0, 0, crop.width, crop.height);
+    const blob = await canvas.convertToBlob({ type: "image/jpeg", quality: 0.92 });
+    const id = (page.externalId ?? "video").replace(/[^A-Za-z0-9_-]+/g, "-");
+    return await saveBlob(blob, `${id}-${Math.round(prep.timeS)}s.jpg`, { mediaKind: "video_frame", frameTimeS: prep.timeS }, page, { haus });
+  } finally {
+    browser.tabs.sendMessage(tabId, { type: "restore-frame" }).catch(() => {});
+  }
+}
 
 async function inspectTab(tabId: number): Promise<PageInfo> {
   try {

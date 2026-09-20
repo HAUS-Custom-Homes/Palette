@@ -306,3 +306,17 @@ CREATE TABLE IF NOT EXISTS backfill (
 -- Columns added after the first release. ADD COLUMN IF NOT EXISTS keeps
 -- this file idempotent against a database created before they existed.
 ALTER TABLE item_terms ADD COLUMN IF NOT EXISTS suggested boolean NOT NULL DEFAULT false;
+
+-- A post is not an image. One Instagram post can hold ten slides or a video,
+-- and each saved slide or frame is its own item with its own tags. post_id is
+-- what groups them; external_id stays unique per slide ("ig:CODE#3") or per
+-- frame ("ig:CODE@14.2"). media_kind: image | video_cover | video_frame.
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS post_id      text;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS slide_index  integer;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS slide_count  integer;
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS media_kind   text NOT NULL DEFAULT 'image';
+ALTER TABLE sources ADD COLUMN IF NOT EXISTS frame_time_s real;
+CREATE INDEX IF NOT EXISTS sources_post_idx ON sources (post_id);
+-- Rows saved before posts were modelled: the external id was the post id.
+UPDATE sources SET post_id = external_id
+ WHERE post_id IS NULL AND external_id IS NOT NULL AND kind IN ('instagram', 'pinterest');

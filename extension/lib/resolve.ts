@@ -13,7 +13,25 @@ export type Candidate = {
   alt?: string;
   /** The post or pin this image belongs to, when it is inside a link. */
   postUrl?: string;
+  /** 1-based position in a multi-image post, and how many it holds. */
+  slideIndex?: number;
+  slideCount?: number;
+  /** "video_cover" for a video's poster image. Frames are captured, not fetched. */
+  mediaKind?: "image" | "video_cover" | "video_frame";
+  frameTimeS?: number;
 };
+
+/** What kind of post the open page is, as far as the page itself can tell. */
+export type PostShape = {
+  /** More than one slide: there is a "next" control. */
+  carousel: boolean;
+  slideIndex?: number;
+  slideCount?: number;
+  /** A video is on screen. */
+  video?: { timeS: number; paused: boolean; poster?: string; rect: Rect };
+};
+
+export type Rect = { x: number; y: number; width: number; height: number };
 
 export type PageInfo = {
   url: string;
@@ -27,7 +45,40 @@ export type PageInfo = {
   candidates: Candidate[];
   /** True for a page that lists many saves (Instagram saved, a Pinterest board). */
   isCollection: boolean;
+  /** Present on a single post's page. */
+  post?: PostShape;
 };
+
+/**
+ * Carousel position from the row of indicator dots. Sites restyle these
+ * constantly, so the only thing relied on is that exactly one dot is styled
+ * differently from the rest. Returns a 1-based index, or undefined when the
+ * row does not look like that.
+ */
+export function oddOneOut(classes: string[]): number | undefined {
+  if (classes.length < 2) return undefined;
+  const counts = new Map<string, number>();
+  for (const c of classes) counts.set(c, (counts.get(c) ?? 0) + 1);
+  const singles = [...counts.entries()].filter(([, n]) => n === 1).map(([c]) => c);
+  // Two dots are both "the only one of their kind", so they say nothing.
+  if (singles.length !== 1 || counts.size !== 2) return undefined;
+  return classes.indexOf(singles[0]!) + 1;
+}
+
+/**
+ * Where a page element sits inside a screenshot of the visible tab. The
+ * screenshot is in device pixels and the rect is in CSS pixels; the result is
+ * clamped to the image, and null when nothing useful is left.
+ */
+export function cropFor(rect: Rect, dpr: number, imageW: number, imageH: number): Rect | null {
+  const x = Math.max(0, Math.round(rect.x * dpr));
+  const y = Math.max(0, Math.round(rect.y * dpr));
+  const right = Math.min(imageW, Math.round((rect.x + rect.width) * dpr));
+  const bottom = Math.min(imageH, Math.round((rect.y + rect.height) * dpr));
+  const width = right - x;
+  const height = bottom - y;
+  return width >= 150 && height >= 150 ? { x, y, width, height } : null;
+}
 
 export function siteFor(url: string): Site {
   try {
