@@ -61,7 +61,7 @@ export function UploadZone({ hauses }: { hauses: Array<{ slug: string; label: st
              onChange={(e) => e.target.files && void send(e.target.files)} />
       <div className="dropzone-row">
         <button type="button" className="btn" onClick={() => input.current?.click()} disabled={busy}>Choose images</button>
-        <input className="search" placeholder="or paste an image URL" value={url}
+        <input className="search" placeholder="or paste a link to an image, a post or a page, then Enter" value={url}
                onChange={(e) => setUrl(e.target.value)}
                onKeyDown={(e) => { if (e.key === "Enter" && url) void send([], url); }} />
         <select className="search" style={{ flex: "0 0 180px" }} value={haus} onChange={(e) => setHaus(e.target.value)}>

@@ -176,6 +176,18 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
             </div>
           )}
 
+          {/* Saved from a pasted link: all a link can reach is the post's cover, at
+              preview size. Say so, and point at the way to the rest. */}
+          {post && !isVideo && !post.slideCount && post.siblings.length === 1 && post.sourceUrl && (post.kind === "instagram" || post.kind === "pinterest") && (
+            <div className="strip">
+              <span className="lead" style={{ whiteSpace: "normal" }}>
+                This is the post&apos;s cover, at the size {post.kind === "instagram" ? "Instagram" : "Pinterest"} publishes for previews.
+                For full size, or the other images in the post, open it and save with the Palette extension.
+              </span>
+              <a className="go" href={post.sourceUrl} target="_blank" rel="noreferrer">Open the post</a>
+            </div>
+          )}
+
           {like.length > 0 && (
             <div className="panel" style={{ marginTop: 14 }}>
               <h3>More like this</h3>

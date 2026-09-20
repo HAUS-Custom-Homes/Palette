@@ -5,6 +5,7 @@ import { derive } from "@/derive/pipeline";
 import { reindexItem } from "@/search/index-item";
 import { nearDuplicates } from "@/search/query";
 import { originalKey, sha256, store } from "@/storage/object-store";
+import { PREVIEW_UA, previewFromHtml, type PagePreview } from "./page-preview";
 
 /**
  * REF-01 FR-3, FR-5, FR-11, FR-21, FR-22.
@@ -216,22 +217,43 @@ export async function ingestUrl(
   source: Partial<SourceInfo> = {},
   extra: { termIds?: string[]; note?: string } = {},
 ): Promise<IngestResult> {
-  const res = await fetch(url, {
-    headers: { "user-agent": "Palette/0.2 (HAUS private reference library)", accept: "image/*" },
-    redirect: "follow",
-  });
-  if (!res.ok) throw new Error(`fetch failed: ${res.status} ${res.statusText}`);
+  const headers = { "user-agent": PREVIEW_UA, accept: "image/*,text/html;q=0.8" };
+  let res = await fetch(url, { headers, redirect: "follow" });
+  if (!res.ok) throw new Error(`could not open that link (${res.status})`);
+  let contentType = (res.headers.get("content-type") ?? "").split(";")[0].trim();
 
-  const contentType = (res.headers.get("content-type") ?? "").split(";")[0].trim();
+  // A link to a page rather than to a picture: use the preview image the page
+  // publishes for exactly this purpose. See page-preview.ts for why this is
+  // within R-1.
+  let preview: PagePreview | null = null;
+  if (contentType === "text/html" || contentType === "application/xhtml+xml") {
+    const html = (await res.text()).slice(0, 1_500_000);
+    preview = previewFromHtml(html, res.url || url);
+    if (!preview) {
+      throw new Error("that page has no preview image. Open it and save with the extension, or share a screenshot.");
+    }
+    res = await fetch(preview.imageUrl, { headers: { ...headers, accept: "image/*" }, redirect: "follow" });
+    if (!res.ok) throw new Error(`the page's preview image would not load (${res.status})`);
+    contentType = (res.headers.get("content-type") ?? "").split(";")[0].trim();
+  }
   if (!contentType.startsWith("image/")) throw new Error(`not an image: ${contentType || "unknown content-type"}`);
 
   const buffer = Buffer.from(await res.arrayBuffer());
+  const given = Object.fromEntries(Object.entries(source).filter(([, v]) => v !== undefined));
   return ingestBuffer(buffer, {
     userId,
-    filename: new URL(url).pathname.split("/").pop() ?? "clip",
+    filename: new URL(preview?.imageUrl ?? url).pathname.split("/").pop() ?? "clip",
     mime: contentType,
+    title: preview?.title,
     note: extra.note,
     termIds: extra.termIds,
-    source: { kind: source.kind ?? "web", sourceUrl: url, externalId: url, ...source },
+    // What the page says about itself fills the gaps; what the caller knew wins,
+    // except that "it came from a share" is less useful than "it came from Instagram".
+    source: {
+      sourceUrl: url, externalId: url,
+      ...preview?.source,
+      ...given,
+      kind: preview && preview.source.kind !== "web" ? preview.source.kind : (source.kind ?? preview?.source.kind ?? "web"),
+    },
   });
 }

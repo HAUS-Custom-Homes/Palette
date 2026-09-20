@@ -87,7 +87,7 @@ export default async function SettingsPage() {
             <li>Load the extension (<code>extension/README.md</code> in the repo has the two commands).</li>
             <li>Open its <b>Settings</b>, enter this Palette's address and the token, <b>Save and test</b>.</li>
           </ol>
-          <p className="hint" style={{ margin: 0 }}>You can also drop images on the library page or paste an image URL there.</p>
+          <p className="hint" style={{ margin: 0 }}>You can also drop images on the library page or paste a link there. A link to a post saves its cover image; the extension saves full size and every slide.</p>
         </div>
       </div>
     </div>
