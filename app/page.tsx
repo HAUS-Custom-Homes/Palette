@@ -180,6 +180,9 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
         )}
 
         <UploadZone hauses={counts.find((f) => f.key === "project")?.terms ?? []} />
+        <p className="hint" style={{ margin: "8px 4px 0" }}>
+          Saving from your phone? <Link href="/install" style={{ color: "var(--accent)" }}>Put Palette in your share sheet</Link>, on iPhone, Android or a PC.
+        </p>
 
         {items.length === 0 ? (
           <div className="empty">

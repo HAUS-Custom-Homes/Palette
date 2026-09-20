@@ -155,6 +155,19 @@ button.chip { font-family: var(--font); }
 .card[data-selected="true"] { outline: 2px solid var(--accent); outline-offset: 2px; }
 .card[data-focus="true"] { box-shadow: 0 0 0 2px var(--accent-dim); }
 
+/* ---- getting into the share sheet ---- */
+.lead-line { font-size: 17px; margin: 0 0 6px; color: var(--text); }
+.steps.big { font-size: 15px; line-height: 1.6; padding-left: 22px; margin: 14px 0 4px; }
+.steps.big > li { margin-bottom: 16px; padding-left: 4px; }
+.steps.big > li::marker { color: var(--accent); font-weight: 600; }
+.steps.big .steps { font-size: 14px; margin-top: 8px; color: color-mix(in srgb, var(--text) 85%, var(--muted)); }
+.steps.big .steps li { margin-bottom: 6px; }
+.steps code { user-select: all; word-break: break-all; }
+.keybox { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+.keybox input { flex: 1; min-width: 200px; font: 13px ui-monospace, monospace; padding: 11px 14px; border-radius: 999px; border: 1px solid var(--accent); background: var(--surface-2); color: var(--text); }
+.keybox .hint { flex-basis: 100%; margin: 0; }
+section.panel h3 { font-size: 12.5px; }
+
 /* ---- REF-02: saving ---- */
 .savebar { display: flex; gap: 8px; align-items: center; margin: 16px 0 0; position: relative; border-radius: 999px; }
 .savebar .search { flex: 1; border-radius: 999px; padding: 11px 18px; border-style: dashed; }

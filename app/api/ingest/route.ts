@@ -57,8 +57,16 @@ export async function POST(req: NextRequest) {
 
   // ---- upload: one or many files, plus an optional url field ------------
   const form = await req.formData();
-  const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
-  const url = String(form.get("url") ?? "").trim();
+  const allFiles = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
+  // iOS Shortcuts sends a shared link as a tiny text file when the field is a
+  // File. That is a link, not a picture that failed.
+  const isTextFile = (f: File) => /^text\//.test(f.type) || /\.(txt|url|webloc)$/i.test(f.name);
+  const files = allFiles.filter((f) => !isTextFile(f));
+  const fileText = (await Promise.all(allFiles.filter((f) => isTextFile(f) && f.size < 20_000).map((f) => f.text()))).join(" ");
+  // A phone's share sheet hands over whatever the app felt like: a bare link, a
+  // sentence with a link in it, or the link in a "text" field. Find the link.
+  const shared = [form.get("url"), form.get("text"), fileText].map((v) => (typeof v === "string" ? v : "")).join(" ");
+  const url = shared.match(/https?:\/\/[^\s"'<>]+/)?.[0] ?? "";
   const note = String(form.get("note") ?? "").trim() || undefined;
   // "hurst" from a dropdown or the extension, or an id from inside the app.
   const haus = await resolveOpenTermIds("project", form.getAll("haus").map(String));
@@ -128,7 +136,12 @@ export async function POST(req: NextRequest) {
     }
   }
 
-  if (!files.length && !url) return NextResponse.json({ error: "nothing to save" }, { status: 400 });
+  if (!files.length && !url) {
+    return NextResponse.json(
+      { error: "nothing to save", message: "Palette found no picture or link in what was shared. Try sharing the post's link, or a screenshot." },
+      { status: 400 },
+    );
+  }
 
   // Post-response work that survives the response ending (Vercel-safe).
   after(() => runTagQueue(10).catch(() => {}));
@@ -146,5 +159,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  return NextResponse.json({ saved, duplicates, variants, failed, errors, itemId: post?.id ?? lastItemId, post });
+  // One sentence for whatever is on the other end to show: the iPhone Shortcut's
+  // notification, the extension's toast.
+  const n = post?.count ?? saved;
+  const message = !post
+    ? `Palette could not save that${errors[0] ? `: ${errors[0]}` : "."}`
+    : saved === 0 && variants === 0
+      ? "Already in Palette"
+      : `Saved to Palette${n > 1 ? ` · ${n} items` : ""}`;
+
+  return NextResponse.json({ saved, duplicates, variants, failed, errors, itemId: post?.id ?? lastItemId, post, message });
 }

@@ -1,10 +1,11 @@
 import type { MetadataRoute } from "next";
 
 /**
- * Installable web app. "Add to Home Screen" on iPhone and Android, an icon,
- * no browser chrome. On Android, share_target also puts Palette in the native
- * share sheet; iOS does not support that, so the iPhone gets a Shortcut
- * (docs/SHORTCUT.md) that does the same thing through /api/ingest.
+ * Installable web app: an icon and no browser chrome. Once installed, share_target
+ * puts Palette in the system share sheet on Android and on Windows (Chrome and
+ * Edge). iOS allows no web app in its share sheet, so the iPhone gets a Shortcut
+ * that does the same thing through /api/ingest. /install walks each person
+ * through their own device.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -13,8 +14,10 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "HAUS visual reference library",
     start_url: "/",
     display: "standalone",
-    background_color: "#12110f",
-    theme_color: "#12110f",
+    id: "/",
+    scope: "/",
+    background_color: "#0a0a09",
+    theme_color: "#0a0a09",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },

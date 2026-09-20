@@ -22,6 +22,7 @@ export function Nav({ user, attention = 0, at }: { user: User; attention?: numbe
         <summary><span className="avatar" title={user.email}>{initials}</span></summary>
         <div className="menu">
           <span>{user.name ?? user.email} · {user.role}</span>
+          <Link href="/install">Get the app and share sheet</Link>
           <Link href="/settings">Phone and settings</Link>
           <Link href="/taxonomy">Vocabulary</Link>
           <Link href="/backfill">Backfill</Link>
