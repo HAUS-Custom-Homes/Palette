@@ -22,7 +22,7 @@ export type PagePreview = {
   title?: string;
 };
 
-const TRACKING = /^(utm_|igsh|igshid|stkn|fbclid|img_index|hl$|ref$|share)/i;
+const TRACKING = /^(utm_|igsh|igshid|stkn|fbclid|img_index|hl$|ref$|share|_t$|_r$|_d$|is_from_webapp|is_copy_url|sender_device|sender_web_id|web_id|checksum|sec_user_id|u_code|tt_from|timestamp$|user_id$|source$|enter_from|preview_pb|social_sharing|share_)/i;
 
 /** The link without the parts that only identify who shared it. */
 export function cleanUrl(raw: string): string {

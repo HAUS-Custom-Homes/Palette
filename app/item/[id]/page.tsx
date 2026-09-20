@@ -8,7 +8,7 @@ import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
 import { requeue, runTagQueue } from "@/ingest/tag-worker";
 import { getItem, postFor, postMedia, similar } from "@/search/query";
-import { displayName } from "../../ui/icons";
+import { displayName, platformOf } from "../../ui/icons";
 import { captionOf } from "@/ingest/page-preview";
 import { ItemBoardPicker } from "./board-picker";
 import { Carousel } from "./carousel";
@@ -220,7 +220,7 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
           <div className="item-src">
             {post?.sourceUrl && (
               <a href={post.sourceUrl} target="_blank" rel="noreferrer">
-                View on {post.kind === "instagram" ? "Instagram" : post.kind === "pinterest" ? "Pinterest" : "the web"}
+                View on {({ instagram: "Instagram", pinterest: "Pinterest", tiktok: "TikTok", youtube: "YouTube", web: "the web", phone: "the web" } as const)[platformOf(post.kind, post.sourceUrl) ?? "web"]}
               </a>
             )}
             <span>Saved by {String(item.ownerName ?? "someone")} · {String(item.captured_at ?? "").slice(0, 10)}</span>

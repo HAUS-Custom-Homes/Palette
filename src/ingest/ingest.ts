@@ -5,7 +5,8 @@ import { derive } from "@/derive/pipeline";
 import { reindexItem } from "@/search/index-item";
 import { nearDuplicates } from "@/search/query";
 import { originalKey, sha256, store } from "@/storage/object-store";
-import { PREVIEW_UA, cleanUrl, embedUrlOf, postIdOf, previewFromHtml, slidesFromEmbed, titleFor, type PagePreview } from "./page-preview";
+import { PREVIEW_UA, cleanUrl, embedUrlOf, headline, postIdOf, previewFromHtml, slidesFromEmbed, titleFor, type PagePreview } from "./page-preview";
+import { cookieHeader, isTikTokUrl, tikTokFromHtml } from "./tiktok";
 
 /**
  * REF-01 FR-3, FR-5, FR-11, FR-21, FR-22.
@@ -365,6 +366,15 @@ export async function ingestLink(
   source: Partial<SourceInfo> = {},
   extra: { termIds?: string[]; note?: string } = {},
 ): Promise<IngestResult[]> {
+  if (isTikTokUrl(url)) {
+    try {
+      const whole = await ingestTikTok(url, userId, extra);
+      if (whole.length) return whole;
+    } catch {
+      /* fall through to the preview image */
+    }
+  }
+
   const embedUrl = embedUrlOf(url);
   if (embedUrl) {
     try {
@@ -375,6 +385,66 @@ export async function ingestLink(
     }
   }
   return [await ingestOne(url, userId, source, extra)];
+}
+
+/** A TikTok post, whole: the video with its cover, or every picture of a photo post. See tiktok.ts for how and why. */
+async function ingestTikTok(
+  url: string,
+  userId: string,
+  extra: { termIds?: string[]; note?: string },
+): Promise<IngestResult[]> {
+  const headers = { "user-agent": PREVIEW_UA };
+  const page = await fetch(url, { headers, redirect: "follow" });
+  if (!page.ok) return [];
+  const post = tikTokFromHtml((await page.text()).slice(0, 4_000_000));
+  if (!post) return [];
+
+  // The file servers want the visitor cookie this page just set, and the page as referrer.
+  const withCookie = { ...headers, cookie: cookieHeader(page), referer: "https://www.tiktok.com/" };
+  const clean = cleanUrl(page.url || url);
+  const source = {
+    kind: "web" as const,
+    sourceUrl: clean,
+    postId: `tt:${post.id}`,
+    authorHandle: post.author,
+    captionText: post.caption?.slice(0, 2000),
+  };
+  const title = titleFor(post.caption ? headline(post.caption.replace(/#\S+/g, " ").replace(/\s+/g, " ").trim()) : undefined, post.author, !!post.video);
+
+  const image = async (src: string) => {
+    const r = await fetch(src, { headers: { ...withCookie, accept: "image/*" } });
+    const type = (r.headers.get("content-type") ?? "").split(";")[0].trim();
+    return r.ok && type.startsWith("image/") ? { buffer: Buffer.from(await r.arrayBuffer()), type } : null;
+  };
+
+  const results: IngestResult[] = [];
+  if (post.video) {
+    const cover = post.video.cover ? await image(post.video.cover) : null;
+    if (!cover) return [];
+    let video: Parameters<typeof ingestBuffer>[1]["video"];
+    try {
+      const vr = await fetch(post.video.url, { headers: withCookie });
+      const vt = (vr.headers.get("content-type") ?? "").split(";")[0].trim();
+      if (vr.ok && vt.startsWith("video/") && Number(vr.headers.get("content-length") ?? 0) < MAX_VIDEO_BYTES) {
+        video = { buffer: Buffer.from(await vr.arrayBuffer()), mime: vt, width: post.video.width, height: post.video.height, durationS: post.video.durationS };
+      }
+    } catch { /* keep the cover */ }
+    results.push(await ingestBuffer(cover.buffer, {
+      userId, filename: `tiktok-${post.id}.jpg`, mime: cover.type, title, note: extra.note, termIds: extra.termIds, video,
+      source: { ...source, mediaKind: "video_cover" },
+    }));
+    return results;
+  }
+
+  for (const [i, pic] of post.images.entries()) {
+    const got = await image(pic.url);
+    if (!got) continue;
+    results.push(await ingestBuffer(got.buffer, {
+      userId, filename: `tiktok-${post.id}-${i + 1}.jpg`, mime: got.type, title, note: extra.note, termIds: extra.termIds,
+      source: { ...source, slideIndex: post.images.length > 1 ? i + 1 : undefined, slideCount: post.images.length > 1 ? post.images.length : undefined, mediaKind: "image" },
+    }));
+  }
+  return results;
 }
 
 async function ingestWholePost(
