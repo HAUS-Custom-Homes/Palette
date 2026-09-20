@@ -178,7 +178,7 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
 
           {/* Saved from a pasted link: all a link can reach is the post's cover, at
               preview size. Say so, and point at the way to the rest. */}
-          {post && !isVideo && !post.slideCount && post.siblings.length === 1 && post.sourceUrl && (post.kind === "instagram" || post.kind === "pinterest") && (
+          {post && !isVideo && !post.slideCount && post.siblings.length === 1 && post.sourceUrl && Number(item.width ?? 0) <= 700 && (post.kind === "instagram" || post.kind === "pinterest") && (
             <div className="strip">
               <span className="lead" style={{ whiteSpace: "normal" }}>
                 This is the post&apos;s cover, at the size {post.kind === "instagram" ? "Instagram" : "Pinterest"} publishes for previews.

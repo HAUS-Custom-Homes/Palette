@@ -100,6 +100,36 @@ describe("near-duplicates inside one post", () => {
   });
 });
 
+describe("the same slide arriving again, bigger", () => {
+  it("takes over the small copy's place, its haus and its board spot, and hides the small one", async () => {
+    const d = await db();
+    await d.query(`INSERT INTO taxonomy_facets (key, label, is_multi, is_open, ai_tagged) VALUES ('project','Haus',true,true,false) ON CONFLICT (key) DO NOTHING`);
+    const { createOpenTerm } = await import("@/ai/apply-tags");
+    const { addToBoard, createBoard, getBoard } = await import("@/boards/boards");
+    const { termId } = await createOpenTerm("project", "Upgrade", user.id);
+
+    const full = await img(15);
+    const cover = await sharp(full).resize(170).jpeg().toBuffer();
+    const post = { kind: "instagram" as const, postId: "ig:UPGRADE", slideIndex: 1 };
+
+    const small = await ingestBuffer(cover, { userId: user.id, filename: "cover.jpg", source: post, termIds: [termId] });
+    const board = await createBoard(user.id, "Upgrade board");
+    await addToBoard(board, small.itemId, user.id);
+
+    const big = await ingestBuffer(full, { userId: user.id, filename: "full.jpg", source: { ...post, slideCount: 4 } });
+    expect(big.itemId).not.toBe(small.itemId);
+
+    const visible = (await search({ limit: 100 })).items.map((i) => i.id);
+    expect(visible).toContain(big.itemId);
+    expect(visible).not.toContain(small.itemId);
+
+    expect((await postFor(big.itemId))?.siblings.map((s) => s.id)).toEqual([big.itemId]);
+    const human = await d.query(`SELECT 1 FROM item_terms WHERE item_id = $1 AND term_id = $2 AND source = 'human'`, [big.itemId, termId]);
+    expect(human).toHaveLength(1);
+    expect((await getBoard(board, user.id))?.items.map((i) => i.id)).toEqual([big.itemId]);
+  });
+});
+
 describe("an old database", () => {
   it("treats a pre-existing external id as the post id", async () => {
     const d = await db();

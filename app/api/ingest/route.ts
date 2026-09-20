@@ -3,7 +3,7 @@ import { resolveOpenTermIds } from "@/ai/apply-tags";
 import { currentUser } from "@/auth";
 import { boot } from "@/lib/boot";
 import { resolveDeviceToken, type User } from "@/lib/users";
-import { ingestBuffer, ingestUrl, type SourceInfo } from "@/ingest/ingest";
+import { ingestBuffer, ingestLink, ingestUrl, type SourceInfo } from "@/ingest/ingest";
 import { runTagQueue } from "@/ingest/tag-worker";
 
 /**
@@ -115,12 +115,15 @@ export async function POST(req: NextRequest) {
 
   if (url && /^https?:\/\//.test(url)) {
     try {
-      const res = await ingestUrl(url, user.id, { ...provenance, kind: provenance.kind ?? "share" }, { note, termIds: haus });
-      lastItemId = res.itemId;
-      if (res.duplicate) duplicates++; else if (res.variantOf) variants++; else saved++;
+      // A link to a post can be several images. Land the person on the first.
+      const all = await ingestLink(url, user.id, { ...provenance, kind: provenance.kind ?? "share" }, { note, termIds: haus });
+      lastItemId = all[0]?.itemId ?? lastItemId;
+      for (const res of all) {
+        if (res.duplicate) duplicates++; else if (res.variantOf) variants++; else saved++;
+      }
     } catch (err) {
       failed++;
-      errors.push(`${url}: ${(err as Error).message}`);
+      errors.push((err as Error).message);
     }
   }
 

@@ -159,19 +159,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
           )}
         </div>
 
-        {attention > 0 && (
+        {/* Only what stops someone using the library belongs above the pictures.
+            Review counts live in the nav; a failed tagging is the one thing worth a line. */}
+        {s.myQuarantined > 0 && (
           <p className="notice" data-kind="attention">
-            <b>{attention} of your images need you.</b>{" "}
-            {s.myQuarantined > 0 && <>{s.myQuarantined} could not be tagged. </>}
-            {s.myReview > 0 && <>{s.myReview} have tags the model was unsure about. </>}
-            <Link href="/attention">Sort them out</Link>
+            <b>{s.myQuarantined} of your images could not be tagged.</b> <Link href="/attention">Have a look</Link>
           </p>
         )}
 
-        {mode === "heuristic" && (
+        {mode === "heuristic" && user.role === "owner" && (
           <p className="notice">
-            <b>Heuristic tagger.</b> No <code>ANTHROPIC_API_KEY</code> is set, so tags come from filenames and
-            carry low confidence on purpose. Set the key for real vision tagging.
+            <b>Smart tagging is off.</b> Images save and search by title, haus and notes. To have Palette describe and
+            tag each image by itself, add an Anthropic API key in Railway (variable <code>ANTHROPIC_API_KEY</code>).
+            Only you see this.
           </p>
         )}
 

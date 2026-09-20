@@ -156,6 +156,9 @@ const ITEM_SELECT = `
             SELECT t.label, it.suggested FROM item_terms it
               JOIN taxonomy_terms t ON t.id = it.term_id JOIN taxonomy_facets f ON f.id = t.facet_id
              WHERE it.item_id = i.id AND NOT it.rejected AND f.key NOT IN ('project', 'image_type')
+               -- The no-key tagger guesses from words in a caption ("pool", "countertop"
+               -- on a picture of a study). Fine as a review prompt, wrong on the tile.
+               AND (it.source = 'human' OR it.model_version IS NULL OR it.model_version NOT LIKE 'heuristic%')
              ORDER BY it.suggested, (it.source = 'human') DESC, it.confidence DESC LIMIT 3) x) AS tags,
          ps.slide_index AS "slideIndex", ps.slide_count AS "slideCount",
          ps.media_kind AS "mediaKind", ps.frame_time_s AS "frameTimeS",

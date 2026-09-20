@@ -5,7 +5,7 @@ import { derive } from "@/derive/pipeline";
 import { reindexItem } from "@/search/index-item";
 import { nearDuplicates } from "@/search/query";
 import { originalKey, sha256, store } from "@/storage/object-store";
-import { PREVIEW_UA, previewFromHtml, type PagePreview } from "./page-preview";
+import { PREVIEW_UA, cleanUrl, embedUrlOf, postIdOf, previewFromHtml, slidesFromEmbed, type PagePreview } from "./page-preview";
 
 /**
  * REF-01 FR-3, FR-5, FR-11, FR-21, FR-22.
@@ -168,6 +168,22 @@ async function attachSource(itemId: string, s0: SourceInfo) {
     !s0.postId && s0.externalId && (s0.kind === "instagram" || s0.kind === "pinterest")
       ? { ...s0, postId: s0.externalId }
       : s0;
+
+  // The same slide arriving again, bigger: a 640px link preview saved last
+  // week, and now the full-size image. The new one takes over the old one's
+  // place, its human tags and its spots on boards; the old one is kept, as a
+  // variant, because nothing a person saved is ever thrown away.
+  const extId = slideExternalId(s);
+  if (extId) {
+    const prior = await d.one<{ item_id: string; old_w: number | null; new_w: number | null }>(
+      `SELECT s.item_id,
+              (SELECT a.width FROM items i JOIN assets a ON a.id = i.asset_id WHERE i.id = s.item_id) AS old_w,
+              (SELECT a.width FROM items i JOIN assets a ON a.id = i.asset_id WHERE i.id = $3) AS new_w
+         FROM sources s WHERE s.kind = $1 AND s.external_id = $2 AND s.item_id <> $3`,
+      [s.kind, extId, itemId],
+    );
+    if (prior && (prior.new_w ?? 0) > (prior.old_w ?? 0)) await supersede(prior.item_id, itemId);
+  }
   await d.query(
     `INSERT INTO sources (item_id, kind, source_url, external_id, author_handle, author_url,
                           caption_text, board_name, section_name, page_title,
@@ -186,6 +202,31 @@ async function attachSource(itemId: string, s0: SourceInfo) {
       [s.slideCount, s.postId, s.kind],
     );
   }
+}
+
+/** The better copy of the same picture takes over everything a person attached to the old one. */
+async function supersede(oldId: string, newId: string) {
+  const d = await db();
+  await d.transaction(async (tx) => {
+    await tx.query(`UPDATE sources SET item_id = $2 WHERE item_id = $1`, [oldId, newId]);
+    await tx.query(
+      `INSERT INTO item_terms (item_id, term_id, confidence, source, set_by, rejected)
+       SELECT $2, term_id, confidence, source, set_by, rejected FROM item_terms WHERE item_id = $1 AND source = 'human'
+       ON CONFLICT (item_id, term_id) DO NOTHING`,
+      [oldId, newId],
+    );
+    await tx.query(
+      `UPDATE board_items SET item_id = $2 WHERE item_id = $1
+         AND NOT EXISTS (SELECT 1 FROM board_items b2 WHERE b2.board_id = board_items.board_id AND b2.item_id = $2)`,
+      [oldId, newId],
+    );
+    await tx.query(
+      `UPDATE items n SET note = COALESCE(n.note, o.note), rating = COALESCE(n.rating, o.rating), is_hero = n.is_hero OR o.is_hero
+         FROM items o WHERE n.id = $2 AND o.id = $1`,
+      [oldId, newId],
+    );
+    await tx.query(`UPDATE items SET variant_of = $2 WHERE id = $1`, [oldId, newId]);
+  });
 }
 
 async function applyHumanTerms(itemId: string, termIds: string[] | undefined, userId: string) {
@@ -216,6 +257,90 @@ export async function ingestUrl(
   userId: string,
   source: Partial<SourceInfo> = {},
   extra: { termIds?: string[]; note?: string } = {},
+): Promise<IngestResult> {
+  const all = await ingestLink(url, userId, source, extra);
+  return all[0]!;
+}
+
+/**
+ * A pasted or shared link, saved as fully as a link allows. For an Instagram
+ * post that is every image in it at full size, read from the public embed
+ * view; for anything else, the one image the link or its page points at.
+ * Always returns at least one result or throws with words a person can act on.
+ */
+export async function ingestLink(
+  url: string,
+  userId: string,
+  source: Partial<SourceInfo> = {},
+  extra: { termIds?: string[]; note?: string } = {},
+): Promise<IngestResult[]> {
+  const embedUrl = embedUrlOf(url);
+  if (embedUrl) {
+    try {
+      const whole = await ingestWholePost(url, embedUrl, userId, extra);
+      if (whole.length) return whole;
+    } catch {
+      /* fall through to the single preview image */
+    }
+  }
+  return [await ingestOne(url, userId, source, extra)];
+}
+
+async function ingestWholePost(
+  url: string,
+  embedUrl: string,
+  userId: string,
+  extra: { termIds?: string[]; note?: string },
+): Promise<IngestResult[]> {
+  const headers = { "user-agent": PREVIEW_UA };
+  const [embedRes, pageRes] = await Promise.all([
+    fetch(embedUrl, { headers, redirect: "follow" }),
+    fetch(url, { headers, redirect: "follow" }).catch(() => null),
+  ]);
+  if (!embedRes.ok) return [];
+  const { slides, author } = slidesFromEmbed((await embedRes.text()).slice(0, 3_000_000));
+  if (!slides.length) return [];
+
+  // The ordinary page supplies the caption and a title; the embed supplies the pictures.
+  const preview = pageRes?.ok ? previewFromHtml((await pageRes.text()).slice(0, 1_500_000), url) : null;
+  const postId = postIdOf(url)!;
+  const clean = cleanUrl(url);
+
+  const results: IngestResult[] = [];
+  for (const [i, slide] of slides.entries()) {
+    const img = await fetch(slide.url, { headers: { ...headers, accept: "image/*" } });
+    const type = (img.headers.get("content-type") ?? "").split(";")[0].trim();
+    if (!img.ok || !type.startsWith("image/")) continue;
+    results.push(
+      await ingestBuffer(Buffer.from(await img.arrayBuffer()), {
+        userId,
+        filename: new URL(slide.url).pathname.split("/").pop() ?? `slide-${i + 1}.jpg`,
+        mime: type,
+        title: preview?.title,
+        note: extra.note,
+        termIds: extra.termIds,
+        source: {
+          kind: "instagram",
+          sourceUrl: clean,
+          postId,
+          slideIndex: slides.length > 1 ? i + 1 : undefined,
+          slideCount: slides.length > 1 ? slides.length : undefined,
+          mediaKind: slide.isVideo ? "video_cover" : "image",
+          authorHandle: author ?? preview?.source.authorHandle,
+          captionText: preview?.source.captionText,
+          pageTitle: preview?.source.pageTitle,
+        },
+      }),
+    );
+  }
+  return results;
+}
+
+async function ingestOne(
+  url: string,
+  userId: string,
+  source: Partial<SourceInfo>,
+  extra: { termIds?: string[]; note?: string },
 ): Promise<IngestResult> {
   const headers = { "user-agent": PREVIEW_UA, accept: "image/*,text/html;q=0.8" };
   let res = await fetch(url, { headers, redirect: "follow" });

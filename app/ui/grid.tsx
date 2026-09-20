@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ItemRow } from "@/search/query";
 import { PlayIcon, SourceIcon, StackIcon, clock, displayName } from "./icons";
 
@@ -100,6 +100,35 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
 
   const n = selected.size;
 
+  // Masonry by hand: each image goes into whichever column is shortest so far.
+  // CSS multi-column did this for free, and painted tiles black in Chrome once
+  // they carried overlays and rounded clipping, which is not a trade worth having.
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [cols, setCols] = useState(4);
+  useEffect(() => {
+    const el = gridRef.current;
+    if (!el) return;
+    const fit = () => {
+      const w = el.clientWidth;
+      setCols(w < 520 ? 2 : Math.max(2, Math.min(6, Math.floor(w / 250))));
+    };
+    fit();
+    const ro = new ResizeObserver(fit);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+  const columns = useMemo(() => {
+    const out: number[][] = Array.from({ length: cols }, () => []);
+    const heights = new Array<number>(cols).fill(0);
+    items.forEach((it, i) => {
+      const ratio = it.width && it.height ? Math.min(2.2, Math.max(0.5, it.height / it.width)) : 1;
+      const c = heights.indexOf(Math.min(...heights));
+      out[c]!.push(i);
+      heights[c]! += ratio;
+    });
+    return out;
+  }, [items, cols]);
+
   return (
     <>
       {(n > 0 || tray.length > 0 || msg) && (
@@ -127,15 +156,18 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
         </div>
       )}
 
-      <div className="grid">
-        {items.map((it, i) => {
+      <div className="grid" ref={gridRef}>
+        {columns.map((col, c) => (
+        <div className="grid-col" key={c}>
+        {col.map((i) => {
+          const it = items[i]!;
           const on = selected.has(it.id);
           const isVideo = (it.mediaKind ?? "").startsWith("video");
           return (
             <div className="card" id={`card-${it.id}`} key={it.id} data-selected={on} data-focus={i === focus}>
               <Link href={`/item/${it.id}`} onClick={(e) => { if (e.shiftKey || e.metaKey || e.ctrlKey) { e.preventDefault(); toggle(it.id); } }}>
                 <img src={`/api/asset/${it.sha256}/grid`} alt={it.captionAi ?? it.title ?? "reference"}
-                     width={it.width ?? 400} height={it.height ?? 300} loading="lazy" />
+                     width={it.width ?? 400} height={it.height ?? 300} loading={i < 12 ? "eager" : "lazy"} decoding="async" />
               </Link>
               <button type="button" className="select-dot" data-on={on} title="Select (x)" onClick={() => toggle(it.id)}>{on ? "✓" : ""}</button>
               <div className="tile-tl">
@@ -166,6 +198,8 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
             </div>
           );
         })}
+        </div>
+        ))}
       </div>
     </>
   );

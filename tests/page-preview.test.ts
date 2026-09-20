@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cleanUrl, headline, metaTags, postIdOf, previewFromHtml } from "@/ingest/page-preview";
+import { cleanUrl, embedUrlOf, headline, metaTags, postIdOf, previewFromHtml, slidesFromEmbed } from "@/ingest/page-preview";
 
 /**
  * Found the hard way on 2026-09-20: the first real link pasted into Palette
@@ -26,6 +26,37 @@ describe("a pasted link", () => {
     expect(postIdOf("https://www.instagram.com/thehutcompany/reel/ABC_-9/")).toBe("ig:ABC_-9");
     expect(postIdOf("https://www.pinterest.com/pin/12345/")).toBe("pin:12345");
     expect(postIdOf("https://example.com/p/nope/")).toBeUndefined();
+  });
+});
+
+describe("every image of a post, from the public embed view", () => {
+  // The embed page carries JSON inside a JS string, so every value is escaped twice.
+  const node = (n: number, video = false) =>
+    `{\\"node\\":{\\"id\\":\\"${n}\\",\\"is_video\\":${video},\\"display_url\\":\\"https:\\\\/\\\\/scontent.cdninstagram.com\\\\/v\\\\/slide${n}.jpg?k=a\\\\u00253D\\\\u0026x=1\\",\\"dimensions\\":{\\"height\\":1344,\\"width\\":1088}}}`;
+  const embed = (children: string) =>
+    `<script>s.handle("{\\"owner\\":{\\"username\\":\\"thehutcompany\\"},\\"display_url\\":\\"https:\\\\/\\\\/scontent.cdninstagram.com\\\\/v\\\\/slide1.jpg?k=parent\\",${children}}")</script>`;
+
+  it("finds them in order, full size, unescaped, without counting the cover twice", () => {
+    const html = embed(`\\"edge_sidecar_to_children\\":{\\"edges\\":[${node(1)},${node(2)},${node(3, true)}]}`);
+    const { slides, author } = slidesFromEmbed(html);
+    expect(author).toBe("thehutcompany");
+    expect(slides.map((s) => s.url)).toEqual([
+      "https://scontent.cdninstagram.com/v/slide1.jpg?k=a%3D&x=1",
+      "https://scontent.cdninstagram.com/v/slide2.jpg?k=a%3D&x=1",
+      "https://scontent.cdninstagram.com/v/slide3.jpg?k=a%3D&x=1",
+    ]);
+    expect(slides.map((s) => s.isVideo)).toEqual([false, false, true]);
+    expect(slides[0]).toMatchObject({ width: 1088, height: 1344 });
+  });
+
+  it("takes exactly one image from a single-image post, and nothing from a page without data", () => {
+    expect(slidesFromEmbed(embed(`\\"x\\":1`)).slides).toHaveLength(1);
+    expect(slidesFromEmbed("<html>login</html>").slides).toEqual([]);
+  });
+
+  it("only exists for Instagram posts", () => {
+    expect(embedUrlOf("https://www.instagram.com/reel/AbC/?igsh=1")).toBe("https://www.instagram.com/p/AbC/embed/captioned/");
+    expect(embedUrlOf("https://www.pinterest.com/pin/1/")).toBeUndefined();
   });
 });
 

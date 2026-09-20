@@ -20,7 +20,7 @@ export function UploadZone({ hauses }: { hauses: Array<{ slug: string; label: st
     const list = [...files].filter((f) => f.type.startsWith("image/"));
     if (!list.length && !link) return;
     setBusy(true);
-    setMsg(link ? "fetching..." : `saving ${list.length} file${list.length > 1 ? "s" : ""}...`);
+    setMsg(link ? "Getting the pictures from that link..." :`saving ${list.length} file${list.length > 1 ? "s" : ""}...`);
 
     const body = new FormData();
     for (const f of list) body.append("files", f);
@@ -31,12 +31,15 @@ export function UploadZone({ hauses }: { hauses: Array<{ slug: string; label: st
       const res = await fetch("/api/ingest", { method: "POST", body });
       const json = (await res.json()) as { saved: number; duplicates: number; variants: number; failed: number; errors?: string[]; error?: string };
       if (!res.ok) throw new Error(json.error ?? "failed");
+      const plural = (n: number) => `${n} image${n === 1 ? "" : "s"}`;
       setMsg(
-        `${json.saved} saved` +
-          (json.duplicates ? `, ${json.duplicates} already here` : "") +
-          (json.variants ? `, ${json.variants} folded in as near-duplicates` : "") +
-          (json.failed ? `, ${json.failed} failed (${json.errors?.[0] ?? ""})` : "") +
-          ". Tagging queued.",
+        json.saved === 0 && !json.duplicates && !json.variants && json.failed
+          ? `That did not save: ${json.errors?.[0] ?? "unknown problem"}`
+          : `Saved ${plural(json.saved)}` +
+            (json.duplicates ? `, ${json.duplicates} already in the library` : "") +
+            (json.variants ? `, ${json.variants} matched a picture you already have` : "") +
+            (json.failed ? `, ${json.failed} did not save (${json.errors?.[0] ?? ""})` : "") +
+            ".",
       );
       setUrl("");
       router.refresh();
@@ -70,7 +73,7 @@ export function UploadZone({ hauses }: { hauses: Array<{ slug: string; label: st
         </select>
       </div>
       <div className="hint" style={{ marginTop: 6 }}>
-        {busy ? "working..." : msg ?? "Or drop images anywhere in this box. Stored by hash, tagged after."}
+        {busy ? "working..." : msg ?? "Drop images here, or paste an Instagram or Pinterest link and press Enter. A post saves every picture in it."}
       </div>
     </div>
   );

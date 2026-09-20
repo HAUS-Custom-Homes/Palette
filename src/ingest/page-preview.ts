@@ -76,6 +76,55 @@ export function postIdOf(url: string): string | undefined {
   return undefined;
 }
 
+export type EmbedSlide = { url: string; isVideo: boolean; width?: number; height?: number };
+
+/** The address of the view Instagram publishes for embedding a post on any website. */
+export function embedUrlOf(url: string): string | undefined {
+  const id = postIdOf(url);
+  return id?.startsWith("ig:") ? `https://www.instagram.com/p/${id.slice(3)}/embed/captioned/` : undefined;
+}
+
+/** The embed page carries its data as JSON inside a JS string, so each value is escaped twice. */
+function unescapeTwice(raw: string): string {
+  let s = raw;
+  for (let i = 0; i < 2; i++) {
+    try { s = JSON.parse(`"${s}"`) as string; } catch { break; }
+  }
+  return s.replace(/\\\//g, "/");
+}
+
+/**
+ * Every image of a post, in order and at full size, from Instagram's public
+ * embed view: the same signed-out page a blog shows in an iframe. This is what
+ * lets a pasted link save the whole post instead of a 640px cover. A video
+ * slide yields its cover. Empty when the page has no such data (a private or
+ * removed post, or a changed page), and the caller falls back to the preview.
+ */
+export function slidesFromEmbed(html: string): { slides: EmbedSlide[]; author?: string } {
+  const author = /\\"username\\":\\"([A-Za-z0-9._]+)\\"/.exec(html)?.[1];
+  const at = html.indexOf("edge_sidecar_to_children");
+  const scope = at >= 0 ? html.slice(at) : html;
+  const slides: EmbedSlide[] = [];
+  const seen = new Set<string>();
+  const node = /\\"is_video\\":(true|false).{0,400}?\\"display_url\\":\\"(.*?)\\"|\\"display_url\\":\\"(.*?)\\"/gs;
+  for (const m of scope.matchAll(node)) {
+    const url = unescapeTwice(m[2] ?? m[3] ?? "");
+    if (!/^https:\/\//.test(url)) continue;
+    const key = url.split("?")[0]!;
+    if (seen.has(key)) continue;
+    seen.add(key);
+    slides.push({ url, isVideo: m[1] === "true" });
+    // A single-image post has exactly one; do not wander into "more posts".
+    if (at < 0) break;
+  }
+  const dims = [...scope.matchAll(/\\"dimensions\\":\{\\"height\\":(\d+),\\"width\\":(\d+)\}/g)];
+  slides.forEach((s, i) => {
+    const d = dims[i];
+    if (d) { s.height = Number(d[1]); s.width = Number(d[2]); }
+  });
+  return { slides: slides.slice(0, 20), author };
+}
+
 /** A caption is a paragraph; a title is its first sentence, or its first ninety characters at a word. */
 export function headline(text: string): string {
   const first = /^(.{12,100}?[.?!])(\s|$)/.exec(text)?.[1];
