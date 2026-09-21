@@ -61,12 +61,13 @@ export default async function InstallPage() {
               <li><b>Add the sending step.</b> Tap the search bar at the bottom (<i>Search Actions</i>), type <code>Get Contents of URL</code>, and tap it. It lands under the first block.</li>
               <li><b>The address.</b> In the new block tap the faint blue <b>URL</b> and type exactly: <code>{host}/api/ingest</code></li>
               <li><b>Open its options.</b> Tap the small arrow <b>&gt;</b> at the right of that block. Tap <b>Method</b> and choose <b>POST</b>.</li>
-              <li><b>Your key.</b> Tap <b>Headers</b>, then <b>Add new header</b>. In <b>Key</b> type <code>Authorization</code> (capital A, spelled exactly). In <b>Text</b> paste the key you copied in step 1. It must start with the word <code>Bearer</code> and a space, which the Copy button already included.</li>
-              <li><b>What to send.</b> Tap <b>Request Body</b> and choose <b>Form</b>. Tap <b>Add new field</b>, choose <b>Text</b>. Key: <code>url</code>. For the value, tap the field, then tap <b>Shortcut Input</b> in the strip above the keyboard.</li>
-              <li><b>And the picture.</b> Tap <b>Add new field</b> again, choose <b>File</b>. Key: <code>files</code>. Value: <b>Shortcut Input</b> again. (Two fields because a share is sometimes a link and sometimes a picture. Palette uses whichever one has something in it.)</li>
+              <li><b>What to send.</b> Tap <b>Request Body</b> and choose <b>Form</b>. (Leave <b>Headers</b> alone; you do not need it.)</li>
+              <li><b>Your key.</b> Tap <b>Add new field</b>, choose <b>Text</b>. On the left, where it says Key, type <code>key</code>. On the right, where it says Text, paste the key you copied in step 1.</li>
+              <li><b>The link.</b> Tap <b>Add new field</b>, choose <b>Text</b>. Left: <code>url</code>. Right: tap the box, then tap <b>Shortcut Input</b> in the strip above the keyboard.</li>
+              <li><b>The picture.</b> Tap <b>Add new field</b> again, choose <b>File</b>. Left: <code>files</code>. Right: <b>Shortcut Input</b> again. You now have three rows: <code>key</code>, <code>url</code>, <code>files</code>. (A share is sometimes a link and sometimes a picture. Palette uses whichever one has something in it.)</li>
               <li><b>Read the answer.</b> Search actions for <code>Get Dictionary Value</code> and tap it. It should read <i>Get Value for ... in Contents of URL</i>. Tap the faint <b>Key</b> and type <code>message</code>.</li>
               <li><b>Show the answer.</b> Search actions for <code>Show Notification</code> and tap it. Tap its text (it says Hello World), delete that, and tap <b>Dictionary Value</b> in the strip above the keyboard.</li>
-              <li>Tap <b>Done</b> at the top right. The shortcut is saved.</li>
+              <li><b>Test it.</b> There is nothing to save: the shortcut saves itself as you go. Tap the <b>Play</b> button at the bottom right. With nothing shared, the right answer is a notification that says Palette <i>found no picture or link</i>. That means the phone reached Palette and your key was accepted.</li>
             </ol>
             <p className="hint" style={{ marginTop: 8 }}>
               The first time you use it, iPhone asks whether Palette may send to {host.replace(/^https?:\/\//, "")}: choose
@@ -88,7 +89,9 @@ export default async function InstallPage() {
         <li>
           <b>If it does not work,</b> the notification tells you why.
           <ol className="steps">
-            <li><i>did not recognise this phone&apos;s key</i>: the Authorization value is wrong. It must be the word <code>Bearer</code>, one space, then the key, with nothing before or after. Make a new key above and paste it again.</li>
+            <li><i>No key arrived</i>: the form has no row named <code>key</code>, or its right-hand box is empty. Paste your key there.</li>
+            <li><i>That key is not active</i>: the key in the shortcut is not one Palette knows. Tap <b>Make my key</b> above, copy, and replace what is in the <code>key</code> row.</li>
+            <li><i>The network connection was lost</i>: try once more, then try with Wi-Fi off. If it only fails on one Wi-Fi network, that network is blocking it; tell Trevor.</li>
             <li><i>found no picture or link</i>: the two form fields are not both set to <b>Shortcut Input</b>, or their keys are not exactly <code>url</code> and <code>files</code> (lower case).</li>
             <li><b>No notification at all:</b> notifications for Shortcuts are off (Settings, Notifications, Shortcuts), or the address in the URL block has a typo.</li>
             <li><b>Palette is not in the share card:</b> open the shortcut, tap the <b>i</b>, and check <b>Show in Share Sheet</b> is on. Then look in the list of actions under the app icons, not among the icons.</li>

@@ -33,17 +33,19 @@ filled in. Button names are from recent versions of iOS and may differ by a word
 5. **Add the sending step.** In the search bar at the bottom type `Get Contents of URL` and tap it.
 6. **The address.** Tap the faint blue **URL** and type exactly `https://hauspalette.com/api/ingest`
 7. **Options.** Tap the small arrow at the right of that block. **Method**: **POST**.
-8. **Your key.** **Headers**, **Add new header**. Key `Authorization`. Text: paste the key from
-   step 1 (it starts with `Bearer` and a space).
-9. **What to send.** **Request Body**: **Form**. **Add new field**, **Text**, key `url`, value
-   **Shortcut Input** (from the strip above the keyboard).
+8. **What to send.** **Request Body**: **Form**. Leave **Headers** alone.
+9. **Your key.** **Add new field**, **Text**. Left box `key`, right box: paste the key from step 1.
+   Then **Add new field**, **Text** again: left `url`, right **Shortcut Input** (from the strip
+   above the keyboard).
 10. **And the picture.** **Add new field**, **File**, key `files`, value **Shortcut Input**.
     Two fields because a share is sometimes a link and sometimes a picture; Palette uses
     whichever has something in it.
 11. **Read the answer.** Add the action `Get Dictionary Value`. Key: `message`.
 12. **Show the answer.** Add the action `Show Notification`. Replace "Hello World" with the
     **Dictionary Value** variable.
-13. **Done.** First use: iPhone asks to allow sending to hauspalette.com (**Always Allow**) and
+13. **Test.** Newer iOS has no Done button; the shortcut saves itself. Press **Play** (bottom
+    right). With nothing shared, the right answer is "found no picture or link": the phone reached
+    Palette and the key was accepted. First real use: iPhone asks to allow sending to hauspalette.com (**Always Allow**) and
     perhaps to allow Shortcuts notifications (**Allow**).
 
 The notification then says "Saved to Palette · 7 items", "Already in Palette", or exactly why it

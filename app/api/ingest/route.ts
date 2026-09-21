@@ -43,13 +43,28 @@ const numField = (v: string | undefined) => {
 
 export async function POST(req: NextRequest) {
   await boot();
-  const user = await whoIs(req);
+  let user = await whoIs(req);
+
+  // The Headers section is the fiddliest corner of the iPhone Shortcut editor,
+  // and the first real attempt arrived with no header at all. So the key may
+  // also come as an ordinary form field, which is the part of that screen
+  // people get right. Any text field will do; `key` is what the guide says.
+  let early: FormData | null = null;
+  let fieldKey: string | null = null;
+  if (!user && /multipart\/form-data|x-www-form-urlencoded/i.test(req.headers.get("content-type") ?? "")) {
+    early = await req.formData().catch(() => null);
+    for (const [, v] of early ?? []) {
+      if (typeof v === "string" && /plt_[A-Za-z0-9_-]{20,}/i.test(v)) { fieldKey = v; break; }
+    }
+    if (fieldKey) user = await resolveDeviceToken(fieldKey);
+  }
+
   // `message` is what a phone's notification shows, so every answer carries one.
   if (!user) {
     // Say which of the two it is, in few enough words to fit a notification.
-    const key = keyIn(req);
+    const key = fieldKey ?? keyIn(req);
     const message = !key
-      ? "No key arrived. In the Shortcut: Headers, Key = Authorization, Text = your key."
+      ? "No key arrived. Add a form field named key and paste your Palette key as its value."
       : !/plt_[A-Za-z0-9_-]{20,}/i.test(key)
         ? "The key looks cut off. Copy it again from Palette and paste the whole thing."
         : "That key is not active. Make a new one in Palette and paste it in.";
@@ -76,7 +91,7 @@ export async function POST(req: NextRequest) {
   }
 
   // ---- upload: one or many files, plus an optional url field ------------
-  const form = await req.formData();
+  const form = early ?? (await req.formData());
   const allFiles = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   // iOS Shortcuts sends a shared link as a tiny text file when the field is a
   // File. That is a link, not a picture that failed.
