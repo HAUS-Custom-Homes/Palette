@@ -44,7 +44,10 @@ export async function POST(req: NextRequest) {
     }
     if (!files.length && url) {
       // A link to a post brings the whole post: every picture, and the video when it can be had.
-      const all = await ingestLink(url, user.id, { kind: "share" });
+      // The first picture before the redirect, the rest after it, so the phone is not left waiting.
+      const all = await ingestLink(url, user.id, { kind: "share" }, {
+        defer: (work) => after(() => work().then(() => runTagQueue(10)).catch(() => {})),
+      });
       itemId = all[0]?.itemId ?? null;
     }
   } catch (err) {

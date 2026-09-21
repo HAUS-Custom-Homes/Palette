@@ -41,7 +41,31 @@ const numField = (v: string | undefined) => {
   return Number.isFinite(n) && n >= 0 && n < 86_400 ? n : undefined;
 };
 
+/**
+ * Whatever happens in here, the answer is a small piece of JSON with a
+ * `message` a phone can show. A share sheet cannot do anything useful with an
+ * error page. One line goes to the log per request, with no secrets in it, so
+ * that "it does not work on my phone" can be answered from evidence.
+ */
 export async function POST(req: NextRequest) {
+  const started = Date.now();
+  const ua = (req.headers.get("user-agent") ?? "").slice(0, 60);
+  let res: NextResponse;
+  try {
+    res = await handle(req);
+  } catch (err) {
+    console.error(`[ingest] crashed: ${(err as Error).stack ?? err}`);
+    res = NextResponse.json(
+      { error: "unexpected", message: "Palette hit a problem saving that. Try once more; if it repeats, tell Trevor the time." },
+      { status: 500 },
+    );
+  }
+  console.log(`[ingest] ${res.status} ${Date.now() - started}ms ua="${ua}" len=${req.headers.get("content-length") ?? "?"} ${res.headers.get("x-palette-note") ?? ""}`);
+  res.headers.delete("x-palette-note");
+  return res;
+}
+
+async function handle(req: NextRequest): Promise<NextResponse> {
   await boot();
   let user = await whoIs(req);
 
@@ -130,6 +154,7 @@ export async function POST(req: NextRequest) {
   };
 
   let saved = 0, duplicates = 0, variants = 0, failed = 0;
+  let expected = 0;
   let lastItemId: string | null = null;
   const errors: string[] = [];
 
@@ -160,7 +185,13 @@ export async function POST(req: NextRequest) {
   if (url && /^https?:\/\//.test(url)) {
     try {
       // A link to a post can be several images. Land the person on the first.
-      const all = await ingestLink(url, user.id, { ...provenance, kind: provenance.kind ?? "share" }, { note, termIds: haus });
+      // The first picture is saved before the answer; the rest arrive after it,
+      // so a phone hears back in a couple of seconds however big the post is.
+      const all = await ingestLink(url, user.id, { ...provenance, kind: provenance.kind ?? "share" }, {
+        note, termIds: haus,
+        defer: (work) => after(() => work().then(() => runTagQueue(10)).catch((e) => console.warn(`[ingest] background: ${(e as Error).message}`))),
+      });
+      expected = all[0]?.expected ?? 0;
       lastItemId = all[0]?.itemId ?? lastItemId;
       for (const res of all) {
         if (res.duplicate) duplicates++; else if (res.variantOf) variants++; else saved++;
@@ -196,12 +227,16 @@ export async function POST(req: NextRequest) {
 
   // One sentence for whatever is on the other end to show: the iPhone Shortcut's
   // notification, the extension's toast.
-  const n = post?.count ?? saved;
+  const n = Math.max(post?.count ?? saved, expected);
+  if (post && expected > post.count) post.count = expected;
   const message = !post
     ? `Palette could not save that${errors[0] ? `: ${errors[0]}` : "."}`
-    : saved === 0 && variants === 0
+    : saved === 0 && variants === 0 && !expected
       ? "Already in Palette"
       : `Saved to Palette${n > 1 ? ` · ${n} items` : ""}`;
 
-  return NextResponse.json({ saved, duplicates, variants, failed, errors, itemId: post?.id ?? lastItemId, post, message });
+  const out = NextResponse.json({ saved, duplicates, variants, failed, errors, itemId: post?.id ?? lastItemId, post, message });
+  // For the log line only; stripped before the reply leaves.
+  out.headers.set("x-palette-note", `files=${allFiles.map((f) => `${f.type || "?"}:${f.size}`).join(",") || "-"} link=${url ? new URL(url).hostname : "-"} -> "${message}"`);
+  return out;
 }

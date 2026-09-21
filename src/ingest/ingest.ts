@@ -56,7 +56,17 @@ export type IngestResult = {
   duplicate: boolean;
   variantOf?: string;
   queuedForTagging: boolean;
+  /** Set on the first result of a post whose remaining pictures are still arriving in the background. */
+  expected?: number;
 };
+
+/**
+ * How a caller lets a long save finish after it has answered. A phone waiting
+ * on a share sheet should hear back in a couple of seconds, not after eleven
+ * full-size downloads. The route passes Next's after(); tools pass nothing and
+ * simply wait.
+ */
+export type Defer = (work: () => Promise<void>) => void;
 
 /** A Reel from the public page is 3 to 15MB. This is a guard against the absurd, not a budget. */
 const MAX_VIDEO_BYTES = 200 * 1024 * 1024;
@@ -364,7 +374,7 @@ export async function ingestLink(
   url: string,
   userId: string,
   source: Partial<SourceInfo> = {},
-  extra: { termIds?: string[]; note?: string } = {},
+  extra: { termIds?: string[]; note?: string; defer?: Defer } = {},
 ): Promise<IngestResult[]> {
   if (isTikTokUrl(url)) {
     try {
@@ -378,7 +388,7 @@ export async function ingestLink(
   const embedUrl = embedUrlOf(url);
   if (embedUrl) {
     try {
-      const whole = await ingestWholePost(url, embedUrl, userId, extra);
+      const whole = await ingestWholePost(url, embedUrl, userId, extra, extra.defer);
       if (whole.length) return whole;
     } catch {
       /* fall through to the single preview image */
@@ -452,6 +462,7 @@ async function ingestWholePost(
   embedUrl: string,
   userId: string,
   extra: { termIds?: string[]; note?: string },
+  defer?: Defer,
 ): Promise<IngestResult[]> {
   const headers = { "user-agent": PREVIEW_UA };
   const [embedRes, pageRes] = await Promise.all([
@@ -467,11 +478,10 @@ async function ingestWholePost(
   const postId = postIdOf(url)!;
   const clean = cleanUrl(url);
 
-  const results: IngestResult[] = [];
-  for (const [i, slide] of slides.entries()) {
+  const one = async (slide: (typeof slides)[number], i: number): Promise<IngestResult | null> => {
     const img = await fetch(slide.url, { headers: { ...headers, accept: "image/*" } });
     const type = (img.headers.get("content-type") ?? "").split(";")[0].trim();
-    if (!img.ok || !type.startsWith("image/")) continue;
+    if (!img.ok || !type.startsWith("image/")) return null;
 
     // The file's address expires within hours, so it is fetched now or never.
     // A video Palette cannot get is still saved, as its cover (REF-02 decision 3).
@@ -487,8 +497,7 @@ async function ingestWholePost(
       } catch { /* keep the cover */ }
     }
 
-    results.push(
-      await ingestBuffer(Buffer.from(await img.arrayBuffer()), {
+    return ingestBuffer(Buffer.from(await img.arrayBuffer()), {
         userId,
         video,
         filename: new URL(slide.url).pathname.split("/").pop() ?? `slide-${i + 1}.jpg`,
@@ -507,8 +516,28 @@ async function ingestWholePost(
           captionText: preview?.source.captionText,
           pageTitle: preview?.source.pageTitle,
         },
-      }),
-    );
+      });
+  };
+
+  // The first picture is saved before anyone is answered, so the post exists
+  // and can be opened. The rest follow: in the background when the caller can
+  // wait for them that way, in line when it cannot.
+  const results: IngestResult[] = [];
+  const first = await one(slides[0]!, 0);
+  if (first) results.push(first);
+  const rest = slides.slice(1);
+  if (defer && first && rest.length) {
+    first.expected = slides.length;
+    defer(async () => {
+      for (const [k, slide] of rest.entries()) {
+        try { await one(slide, k + 1); } catch (e) { console.warn(`[ingest] slide ${k + 2} of ${postId}: ${(e as Error).message}`); }
+      }
+    });
+    return results;
+  }
+  for (const [k, slide] of rest.entries()) {
+    const r = await one(slide, k + 1);
+    if (r) results.push(r);
   }
   return results;
 }
