@@ -9,7 +9,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { queueDepth, requeue } from "@/ingest/tag-worker";
 import { facetCounts, search, stats, type SearchParams } from "@/search/query";
-import { SearchIcon } from "./ui/icons";
+import { FilterIcon } from "./ui/icons";
 import { Nav } from "./ui/nav";
 import { UploadZone } from "./ui/upload-zone";
 
@@ -110,31 +110,21 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
   const anyFilter = Boolean(params.q || params.reviewOnly || mine || params.videoOnly || params.sinceDays || params.nearColor || Object.values(params.facets ?? {}).some((v) => v.length));
   const attention = s.myQuarantined + s.myReview;
   const hauses = counts.find((f) => f.key === "project")?.terms ?? [];
+  const picked = Object.entries(params.facets ?? {}).filter(([k]) => k !== "project").reduce((n, [, v]) => n + v.length, 0)
+    + (params.nearColor ? 1 : 0) + (params.reviewOnly ? 1 : 0);
+  // What a new search must carry along: every filter in force except the words.
+  const keep: Record<string, string> = {};
+  for (const [k, v] of Object.entries(params.facets ?? {})) if (v.length) keep[k] = v.join(",");
+  if (mine) keep.mine = "1";
+  if (params.videoOnly) keep.video = "1";
+  if (params.sinceDays) keep.since = String(params.sinceDays);
+  if (params.nearColor) keep.near = params.nearColor.replace("#", "");
 
   return (
     <div>
-      <Nav user={user} attention={attention} at="library" />
+      <Nav user={user} attention={attention} at="library"
+           search={<UploadZone hauses={hauses} q={params.q ?? ""} keep={keep} />} />
       <main className="page">
-        <div className="hero">
-          <h1>Every reference, <span>one place.</span></h1>
-          <p>
-            <b>{s.items.toLocaleString()}</b> {s.items === 1 ? "image" : "images"} · <b>{hauses.filter((h) => h.count > 0).length}</b> haus {hauses.filter((h) => h.count > 0).length === 1 ? "project" : "projects"} · <b>{s.people}</b> {s.people === 1 ? "person" : "people"}
-            {pending > 0 && <> · <b>{pending}</b> waiting to tag</>}
-          </p>
-        </div>
-
-        <form className="searchbar">
-          <SearchIcon />
-          <input className="search" name="q" defaultValue={params.q ?? ""} autoComplete="off"
-                 placeholder="Search by what it looks like, a material, a paint name..." />
-          <kbd>/</kbd>
-          {Object.entries(params.facets ?? {}).map(([k, v]) => v.length ? <input key={k} type="hidden" name={k} value={v.join(",")} /> : null)}
-          {mine && <input type="hidden" name="mine" value="1" />}
-          {params.videoOnly && <input type="hidden" name="video" value="1" />}
-          {params.sinceDays && <input type="hidden" name="since" value={String(params.sinceDays)} />}
-          {params.nearColor && <input type="hidden" name="near" value={params.nearColor.replace("#", "")} />}
-        </form>
-
         {/* Filter state is the URL (FR-27), so every pill is a link. The haus
             sits first and in full because it is the filter people reach for. */}
         <div className="filters">
@@ -147,35 +137,52 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
           <Link className="chip" href={hrefWith(params, { mine: !mine })} data-on={mine}>Mine</Link>
           <Link className="chip" href={hrefWith(params, { since: params.sinceDays === 7 ? null : 7 })} data-on={params.sinceDays === 7}>New this week</Link>
           <Link className="chip" href={hrefWith(params, { video: !params.videoOnly })} data-on={Boolean(params.videoOnly)}>From video</Link>
-          <Link className="chip" href={hrefWith(params, { review: !params.reviewOnly })} data-on={params.reviewOnly}>
-            Review{s.needsReview > 0 && <span className="n">{s.needsReview}</span>}
-          </Link>
-          <span className="sep" />
+          <span className="spacer" />
+          <span className="hint count">
+            {total} {total === 1 ? "post" : "posts"}{anyFilter ? " matching" : ""}{pending > 0 && <> · tagging {pending}</>}
+          </span>
+          <details className="fpanel">
+            <summary className="chip" data-on={picked > 0}><FilterIcon /> Filters{picked > 0 && <span className="n">{picked}</span>}</summary>
+            <div className="sheet">
           {counts.filter((f) => f.key !== "project").map((f) => {
             const picked = f.terms.filter((t) => t.selected);
             const live = f.terms.filter((t) => t.count > 0 || t.selected);
+            if (live.length === 0) return null;
             return (
-              <details className="fdrop" key={f.key}>
-                <summary className="chip" data-on={picked.length > 0}>
-                  {f.label}{picked.length > 0 && <span className="n">{picked.length}</span>}
-                </summary>
-                <div className="sheet">
-                  {live.slice(0, 40).map((t) => (
+              <div className="frow" key={f.key}>
+                <span className="flabel">{f.label}</span>
+                <div className="fchips">
+                  {live.slice(0, picked.length ? 40 : 14).map((t) => (
                     <Link className="chip" key={t.slug} href={hrefWith(params, { facetKey: f.key, slug: t.slug })} data-on={t.selected}>
                       {t.label} <span className="n">{t.count}</span>
                     </Link>
                   ))}
-                  {live.length === 0 && <span className="hint">Nothing tagged yet.</span>}
                 </div>
-              </details>
+              </div>
             );
           })}
+              <div className="frow">
+                <span className="flabel">Colour</span>
+                <div className="fchips">
           <form className="color-pick" title="Images whose main colours come near this one">
             {Object.entries(params.facets ?? {}).map(([k, v]) => v.length ? <input key={k} type="hidden" name={k} value={v.join(",")} /> : null)}
             {params.q && <input type="hidden" name="q" value={params.q} />}
             <input type="color" name="near" defaultValue={params.nearColor ? `#${params.nearColor.replace("#", "")}` : "#d4a868"} />
-            <button className="chip" type="submit" data-on={Boolean(params.nearColor)}>Colour</button>
+            <button className="chip" type="submit" data-on={Boolean(params.nearColor)}>Near this colour</button>
           </form>
+                  {params.nearColor && <Link className="chip" href={hrefWith(params, { color: null })}>Clear</Link>}
+                </div>
+              </div>
+              <div className="frow">
+                <span className="flabel">Tags</span>
+                <div className="fchips">
+                  <Link className="chip" href={hrefWith(params, { review: !params.reviewOnly })} data-on={params.reviewOnly}>
+                    Unsure tags{s.needsReview > 0 && <span className="n">{s.needsReview}</span>}
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </details>
           {anyFilter && !params.reviewOnly && !mine && (
             <form action={saveSearch}>
               <input type="hidden" name="filter" value={JSON.stringify({ q: params.q, facets: params.facets })} />
@@ -213,21 +220,13 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
           <p className="notice" data-kind="attention"><b>That share did not save.</b> {String(sp.why ?? "")}</p>
         )}
 
-        <UploadZone hauses={counts.find((f) => f.key === "project")?.terms ?? []} />
-        <p className="hint" style={{ margin: "8px 4px 0" }}>
-          Saving from your phone? <Link href="/install" style={{ color: "var(--accent)" }}>Put Palette in your share sheet</Link>, on iPhone, Android or a PC.
-        </p>
-
         {items.length === 0 ? (
           <div className="empty">
             <p>{anyFilter ? "Nothing matches." : "Nothing here yet."}</p>
-            {!anyFilter && <p style={{ fontSize: 12 }}>Drop images above, or share one from your phone.</p>}
+            {!anyFilter && <p style={{ fontSize: 12 }}>Paste a link in the box at the top, drop pictures anywhere, or <Link href="/install" style={{ color: "var(--accent)" }}>share from your phone</Link>.</p>}
           </div>
         ) : (
           <>
-            <p className="hint" style={{ padding: "16px 2px 0", margin: 0 }}>
-              {total} {total === 1 ? "item" : "items"}{anyFilter ? " matching" : " in the library"}
-            </p>
             <Grid items={items} boards={boards.filter((b) => !b.isSmart).map((b) => ({ id: b.id, name: b.name }))}
                   hauses={counts.find((f) => f.key === "project")?.terms ?? []} />
           </>

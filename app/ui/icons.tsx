@@ -7,7 +7,8 @@ const base = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke
 export const PlayIcon = () => (<svg {...base}><path d="M7 4v16l13-8z" fill="currentColor" stroke="none" /></svg>);
 export const StackIcon = () => (<svg {...base}><rect x="8" y="8" width="12" height="12" rx="2.5" /><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8" /></svg>);
 export const SearchIcon = () => (<svg {...base} width={20} height={20}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>);
-export const InstagramIcon = () => (<svg {...base}><rect x="4" y="4" width="16" height="16" rx="4.5" /><circle cx="12" cy="12" r="3.5" /><path d="M16.8 7.2h.01" /></svg>);
+export const FilterIcon = () => (<svg {...base}><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></svg>);
+export const InstagramIcon =() => (<svg {...base}><rect x="4" y="4" width="16" height="16" rx="4.5" /><circle cx="12" cy="12" r="3.5" /><path d="M16.8 7.2h.01" /></svg>);
 export const PinterestIcon = () => (<svg {...base}><circle cx="12" cy="12" r="9" /><path d="M11.5 8.5c2-.6 4 .6 4 2.8 0 2-1.400 3.400-3 3.400-.9 0-1.500-.4-1.800-1M12 9l-2.200 9" /></svg>);
 export const GlobeIcon = () => (<svg {...base}><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.800 3 2.800 15 0 18M12 3c-2.800 3-2.800 15 0 18" /></svg>);
 export const PhoneIcon = () => (<svg {...base}><rect x="7" y="3" width="10" height="18" rx="2.500" /><path d="M11 18h2" /></svg>);
@@ -92,6 +93,10 @@ export function By({ name, image, prefix }: { name: string; image?: string | nul
 export function displayName(captionAi: unknown, title: unknown): string {
   const c = typeof captionAi === "string" ? captionAi.trim() : "";
   const t = typeof title === "string" ? title.trim() : "";
+  // What the post's author wrote is the post's name. The model's description
+  // stands in only where the title is a file name ("IMG 4821") or missing.
+  const sentence = t.split(/\s+/).length >= 3 && !/^(img|dsc|pxl|image|screenshot|photo)[\s_-]*\d/i.test(t);
+  if (sentence) return t;
   if (c && !/^untagged reference/i.test(c)) return c;
   return t || c || "Untitled reference";
 }

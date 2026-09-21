@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState, type DragEvent } from "react";
+import { useEffect, useRef, useState } from "react";
+import { SearchIcon } from "./icons";
 
 /**
  * REF-02 decision 7. Saving is one action with no questions. The answer comes
@@ -16,12 +17,17 @@ type Toast =
   | { kind: "undone" }
   | { kind: "error"; text: string };
 
-export function UploadZone({ hauses }: { hauses: Array<{ slug: string; label: string }> }) {
+/**
+ * One box. Words search the library; a link saves the post. Pictures dropped
+ * anywhere on the page are saved too. `q` is the search in force and `keep`
+ * the other filters in the URL, so a new search does not throw them away.
+ */
+export function UploadZone({ hauses, q = "", keep = {} }: { hauses: Array<{ slug: string; label: string }>; q?: string; keep?: Record<string, string> }) {
   const router = useRouter();
   const input = useRef<HTMLInputElement>(null);
   const [over, setOver] = useState(false);
   const [busy, setBusy] = useState<string | null>(null);
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(q);
   const [toast, setToast] = useState<Toast | null>(null);
   const [hold, setHold] = useState(false);
 
@@ -72,27 +78,61 @@ export function UploadZone({ hauses }: { hauses: Array<{ slug: string; label: st
     if (res.ok) { setToast({ kind: "saved", post, already: false, haus: label }); router.refresh(); }
   }
 
-  function onDrop(e: DragEvent) {
-    e.preventDefault();
-    setOver(false);
-    void send(e.dataTransfer.files);
+  const isLink = (t: string) => /^https?:\/\/\S+$/.test(t.trim());
+
+  function go(text: string) {
+    if (isLink(text)) return void send([], text);
+    const params = new URLSearchParams(keep);
+    if (text.trim()) params.set("q", text.trim()); else params.delete("q");
+    const s = params.toString();
+    router.push(s ? `/?${s}` : "/");
   }
+
+  // Pictures can be dropped anywhere on the page, not on a particular box.
+  useEffect(() => {
+    const hasFiles = (e: globalThis.DragEvent) => [...(e.dataTransfer?.types ?? [])].includes("Files");
+    const over = (e: globalThis.DragEvent) => { if (hasFiles(e)) { e.preventDefault(); setOver(true); } };
+    const leave = (e: globalThis.DragEvent) => { if (!e.relatedTarget) setOver(false); };
+    const drop = (e: globalThis.DragEvent) => {
+      if (!hasFiles(e)) return;
+      e.preventDefault();
+      setOver(false);
+      if (e.dataTransfer) void send(e.dataTransfer.files);
+    };
+    window.addEventListener("dragover", over);
+    window.addEventListener("dragleave", leave);
+    window.addEventListener("drop", drop);
+    return () => { window.removeEventListener("dragover", over); window.removeEventListener("dragleave", leave); window.removeEventListener("drop", drop); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // "/" puts the cursor in the box, as it always has.
+  const box = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const key = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (e.key !== "/" || e.metaKey || e.ctrlKey || el?.closest("input, textarea, [contenteditable]")) return;
+      e.preventDefault();
+      box.current?.focus();
+    };
+    window.addEventListener("keydown", key);
+    return () => window.removeEventListener("keydown", key);
+  }, []);
 
   return (
     <>
-      <div className="savebar" data-over={over}
-           onDragOver={(e) => { e.preventDefault(); setOver(true); }}
-           onDragLeave={() => setOver(false)} onDrop={onDrop}>
+      <div className="omni" data-over={over} data-busy={!!busy}>
+        <SearchIcon />
         <input ref={input} type="file" multiple accept="image/*" hidden
                onChange={(e) => e.target.files && void send(e.target.files)} />
-        <input className="search" inputMode="url" value={url} disabled={!!busy}
-               placeholder="Paste an Instagram or Pinterest link, or any web page, and press Enter"
+        <input ref={box} className="search" value={busy ?? url} disabled={!!busy} enterKeyHint="search" autoComplete="off"
+               placeholder="Search, or paste a link to save it" aria-label="Search the library, or paste a link to save it"
                onChange={(e) => setUrl(e.target.value)}
-               onPaste={(e) => { const t = e.clipboardData.getData("text"); if (/^https?:\/\/\S+$/.test(t.trim())) { e.preventDefault(); setUrl(t.trim()); void send([], t); } }}
-               onKeyDown={(e) => { if (e.key === "Enter" && url) void send([], url); }} />
-        <button type="button" className="btn" onClick={() => input.current?.click()} disabled={!!busy}>Upload images</button>
-        {busy && <span className="hint savebar-busy">{busy}</span>}
+               onPaste={(e) => { const t = e.clipboardData.getData("text"); if (isLink(t)) { e.preventDefault(); setUrl(t.trim()); void send([], t); } }}
+               onKeyDown={(e) => { if (e.key === "Enter") go(url); }} />
+        <kbd>/</kbd>
       </div>
+      {over && <div className="dropveil">Drop to save to Palette</div>}
 
       {toast && (
         <div className="toast" role="status" onMouseEnter={() => setHold(true)} onMouseLeave={() => setHold(false)} onFocus={() => setHold(true)}>
