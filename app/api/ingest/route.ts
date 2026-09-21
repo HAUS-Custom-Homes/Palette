@@ -172,7 +172,14 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   const fileText = (await Promise.all(allFiles.filter((f) => isTextFile(f) && f.size < 20_000).map((f) => f.text()))).join(" ");
   // A phone's share sheet hands over whatever the app felt like: a bare link, a
   // sentence with a link in it, or the link in a "text" field. Find the link.
-  const shared = [form.get("url"), form.get("text"), fileText].map((v) => (typeof v === "string" ? v : "")).join(" ");
+  // Field names are typed by hand on a phone ("url " with a trailing space arrived
+  // on 2026-09-20), so the link is looked for in every text field, named ones first.
+  const texts = [...form].filter((e): e is [string, string] => typeof e[1] === "string" && !/plt_/i.test(e[1]));
+  const named = texts.filter(([k]) => /^(url|text)$/i.test(k.trim())).map(([, v]) => v);
+  // The extension sends pictures with source_url and author_url beside them; those
+  // say where a picture came from and are never a link to fetch.
+  const loose = files.length ? [] : texts.filter(([k]) => !/^(source_url|author_url|key)$/i.test(k.trim())).map(([, v]) => v);
+  const shared = [...named, ...loose, fileText].join(" ");
   const url = shared.match(/https?:\/\/[^\s"'<>]+/)?.[0] ?? "";
   const note = String(form.get("note") ?? "").trim() || undefined;
   // "hurst" from a dropdown or the extension, or an id from inside the app.
