@@ -55,7 +55,11 @@ export class ClaudeTagger implements Tagger {
     // model takes the effort setting (the small, cheap ones may not), and a
     // tagger that fails on every image is worse than one that thinks a little
     // harder than it needs to: if the API refuses it once, stop sending it.
-    const call = (withEffort: boolean) => this.client.messages.parse({
+    // create(), not parse(): parse() throws away the whole answer when a single
+    // term falls outside the vocabulary, and the small models do that now and
+    // then ("concrete" where the list has none). lenient() keeps the answer and
+    // turns the stray word into a suggestion instead (2026-09-21).
+    const call = (withEffort: boolean) => this.client.messages.create({
       model: this.model,
       max_tokens: 4096,
       output_config: withEffort ? { effort: "low", format: zodOutputFormat(schema) } : { format: zodOutputFormat(schema) },
@@ -93,7 +97,8 @@ export class ClaudeTagger implements Tagger {
       response = await call(false);
     }
 
-    const parsed = response.parsed_output;
+    const text = response.content.find((c) => c.type === "text");
+    const parsed = text && text.type === "text" ? lenient(text.text, all) : null;
     if (!parsed) throw new Error("tagger returned no parseable output");
 
     const price = PRICES[this.model] ?? PRICES["claude-opus-5"];
@@ -111,6 +116,44 @@ function normaliseMime(mime: string): "image/jpeg" | "image/png" | "image/gif" |
   if (mime === "image/jpg") return "image/jpeg";
   if (["image/jpeg", "image/png", "image/gif", "image/webp"].includes(mime)) return mime as "image/jpeg";
   return "image/webp"; // anything else was transcoded to webp before it got here
+}
+
+/**
+ * The model's JSON, held to the vocabulary without throwing the picture away.
+ * A term that is not in its facet's list is dropped from the tags and handed to
+ * unmatched_suggestions, which is where the vocabulary is allowed to grow
+ * (FR-23). Confidence is clamped. Anything that is not JSON at all is null.
+ */
+export function lenient(text: string, all: LiveFacet[]): Record<string, unknown> | null {
+  let raw: unknown;
+  try { raw = JSON.parse(text); } catch { return null; }
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const out = { ...(raw as Record<string, unknown>) };
+  const keys = new Set(modelFacets(all).map((f) => f.key)); // never an open facet
+  const unmatched = (Array.isArray(out.unmatched_suggestions) ? out.unmatched_suggestions : [])
+    .filter((u): u is { facet: string; label: string } =>
+      !!u && typeof u === "object" && keys.has(String((u as { facet?: unknown }).facet)) && typeof (u as { label?: unknown }).label === "string");
+
+  for (const f of modelFacets(all)) {
+    const known = new Set(f.terms.map((t) => t.slug));
+    const given = out[f.key];
+    // A single-answer facet sometimes arrives as one object, not a list of one.
+    const rows = Array.isArray(given) ? given : given && typeof given === "object" ? [given] : [];
+    const kept: Array<{ term: string; confidence: number }> = [];
+    for (const r of rows as Array<{ term?: unknown; confidence?: unknown }>) {
+      const term = String(r?.term ?? "").trim();
+      if (!term) continue;
+      if (known.has(term)) {
+        const c = Number(r.confidence);
+        kept.push({ term, confidence: Number.isFinite(c) ? Math.min(1, Math.max(0, c)) : 0.5 });
+      } else {
+        unmatched.push({ facet: f.key, label: term.replace(/-/g, " ").toLowerCase() });
+      }
+    }
+    out[f.key] = kept;
+  }
+  out.unmatched_suggestions = unmatched;
+  return out;
 }
 
 function shape(parsed: Record<string, unknown>, all: LiveFacet[]): TagResult {
