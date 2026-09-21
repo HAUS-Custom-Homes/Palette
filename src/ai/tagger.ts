@@ -32,6 +32,7 @@ export class ClaudeTagger implements Tagger {
   readonly name: string;
   private client: Anthropic;
   private facetsCache: LiveFacet[] | null = null;
+  private sendEffort = true;
 
   constructor(private model: string = config.ai.model) {
     this.client = new Anthropic({ apiKey: config.ai.apiKey ?? undefined });
@@ -49,12 +50,15 @@ export class ClaudeTagger implements Tagger {
     const all = await this.facets();
     const schema = buildTagSchema(all);
 
-    const response = await this.client.messages.parse({
+    // Classification against a fixed vocabulary. Low effort is the right
+    // setting and the cheap one; raise it only if the eval says to. Not every
+    // model takes the effort setting (the small, cheap ones may not), and a
+    // tagger that fails on every image is worse than one that thinks a little
+    // harder than it needs to: if the API refuses it once, stop sending it.
+    const call = (withEffort: boolean) => this.client.messages.parse({
       model: this.model,
       max_tokens: 4096,
-      // Classification against a fixed vocabulary. Low effort is the right
-      // setting and the cheap one; raise it only if the eval says to.
-      output_config: { effort: "low", format: zodOutputFormat(schema) },
+      output_config: withEffort ? { effort: "low", format: zodOutputFormat(schema) } : { format: zodOutputFormat(schema) },
       system: [
         {
           type: "text",
@@ -78,6 +82,16 @@ export class ClaudeTagger implements Tagger {
         },
       ],
     });
+
+    let response: Awaited<ReturnType<typeof call>>;
+    try {
+      response = await call(this.sendEffort);
+    } catch (err) {
+      const e = err as { status?: number; message?: string };
+      if (!this.sendEffort || e.status !== 400 || !/effort/i.test(e.message ?? "")) throw err;
+      this.sendEffort = false;
+      response = await call(false);
+    }
 
     const parsed = response.parsed_output;
     if (!parsed) throw new Error("tagger returned no parseable output");
