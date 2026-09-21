@@ -3,6 +3,24 @@ Last updated: 2026-09-20 on Trevor_Lenovo
 
 ## Current state
 
+### iPhone share sheet WORKS (2026-09-20, late)
+Trevor's iPhone saved a whole Instagram post from the share card ("Saved to Palette · 3 items",
+confirmed on the server). The working Shortcut is three blocks: **Receive URLs from Share Sheet**,
+**Get contents of** `https://hauspalette.com/api/ingest` (POST, Form, a `url` row set to Shortcut
+Input, his key in an `authorization` header; a `key` form row works too), **Show notification:
+Contents of URL**. Three traps cost the evening and are now written into `/install` and
+`docs/SHORTCUT.md`: iOS drops a Shortcut Input bubble into the address box (the phone then fetches
+Instagram, hence "Rich Text to Dictionary"); "Receive Apps and 8 more" makes Instagram hand over
+something whose text is empty; the keyboard's suggestion bar adds a space after `url`.
+- `/api/ingest` answers a Shortcut (by user agent, or `?reply=text`) in plain text, so there is no
+  Get Dictionary Value step. It finds the link in any text field, whatever it was named.
+- **`/install/attempts`** (owner only) lists the last 40 requests to `/api/ingest`: time, who,
+  device, field names and sizes, the answer. Table `ingest_log`, written on arrival and completed
+  on answer. Use it before guessing. Railway's log viewer was useless for this.
+- Not done: **photos and screenshots from the iPhone share card.** The `files` File row would not
+  hold Shortcut Input on iOS 26 (snaps back to Choose). Next idea: a second Receive type (Images)
+  with Request Body set to File, which the server would need to accept as a raw image body.
+
 Rounds 3 and 4 are done on top of the multi-user Phase 0. The full REF-01 scope that can be
 built without Trevor's credentials is now built. What remains is deployment, real data, and the
 things that only a person can do (label the golden set, run the first real Instagram scan).

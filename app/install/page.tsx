@@ -32,7 +32,7 @@ export default async function InstallPage() {
   const iphone = (
     <section className="panel" key="iphone" id="iphone">
       <h3>iPhone and iPad</h3>
-      <p className="lead-line">Share, then Palette. From Instagram, Pinterest, Safari, Photos, anywhere.</p>
+      <p className="lead-line">Share, then Palette. From Instagram, Pinterest, TikTok, Safari, anywhere there is a link.</p>
       <p className="hint">
         Apple does not let websites into the share sheet, so Palette gets there as a Shortcut. It takes about three
         minutes, once per phone, and after that it is the same two taps as any app.
@@ -57,14 +57,13 @@ export default async function InstallPage() {
             <ol className="steps">
               <li><b>Name it.</b> Tap the name at the top of the screen (it says something like New Shortcut), choose <b>Rename</b>, type <code>Palette</code>.</li>
               <li><b>Put it in the share card.</b> Tap the <b>i</b> in a circle at the bottom of the screen. Turn on <b>Show in Share Sheet</b>. Tap <b>Done</b>. A new block appears at the top of your shortcut that reads <i>Receive Any input from Share Sheet</i>.</li>
-              <li><b>Say what it accepts.</b> In that block tap the blue word <b>Any</b>. Tap <b>Clear</b> (or switch everything off), then switch on only <b>Images</b>, <b>Media</b> and <b>URLs</b>. Tap <b>Done</b>.</li>
+              <li><b>Say what it accepts.</b> In that block tap the blue words (<b>Any</b>, or <b>Apps and 8 more</b>). Tap <b>Clear</b>, then switch on only <b>URLs</b>. Tap <b>Done</b>. The block now reads <i>Receive URLs from Share Sheet</i>. This matters: with everything switched on, Instagram hands over something that is not a link and nothing is saved.</li>
               <li><b>Add the sending step.</b> Tap the search bar at the bottom (<i>Search Actions</i>), type <code>Get Contents of URL</code>, and tap it. It lands under the first block.</li>
-              <li><b>The address.</b> In the new block tap the faint blue <b>URL</b> and type exactly: <code>{host}/api/ingest</code></li>
+              <li><b>The address.</b> In the new block tap the address box. iPhone often drops a blue <b>Shortcut Input</b> bubble in there by itself: delete it. Then type exactly: <code>{host}/api/ingest</code> so that the box holds the typed address and nothing else.</li>
               <li><b>Open its options.</b> Tap the small arrow <b>&gt;</b> at the right of that block. Tap <b>Method</b> and choose <b>POST</b>.</li>
               <li><b>What to send.</b> Tap <b>Request Body</b> and choose <b>Form</b>. (Leave <b>Headers</b> alone; you do not need it.)</li>
               <li><b>Your key.</b> Tap <b>Add new field</b>, choose <b>Text</b>. On the left, where it says Key, type <code>key</code>. On the right, where it says Text, paste the key you copied in step 1.</li>
-              <li><b>The link.</b> Tap <b>Add new field</b>, choose <b>Text</b>. Left: <code>url</code>. Right: tap the box, then tap <b>Shortcut Input</b> in the strip above the keyboard.</li>
-              <li><b>The picture.</b> Tap <b>Add new field</b> again, choose <b>File</b>. Left: <code>files</code>. Right: <b>Shortcut Input</b> again. You now have three rows: <code>key</code>, <code>url</code>, <code>files</code>. (A share is sometimes a link and sometimes a picture. Palette uses whichever one has something in it.)</li>
+              <li><b>The link.</b> Tap <b>Add new field</b>, choose <b>Text</b>. Left: <code>url</code>, typed letter by letter (picking it from the keyboard&apos;s suggestions adds a space). Right: tap the box, then tap <b>Shortcut Input</b> in the strip above the keyboard. You now have two rows: <code>key</code> and <code>url</code>.</li>
               <li><b>Show the answer.</b> Search actions for <code>Show Notification</code> and tap it. Tap its text (it says Hello World), delete that, and tap <b>Contents of URL</b> in the strip above the keyboard. Your shortcut is now three blocks, in this order: <i>Receive</i>, <i>Get contents of</i>, <i>Show notification</i>. Nothing else.</li>
               <li><b>Test it.</b> There is nothing to save: the shortcut saves itself as you go. Tap the <b>Play</b> button at the bottom right. With nothing shared, the right answer is a notification that says Palette <i>found no picture or link</i>. That means the phone reached Palette and your key was accepted.</li>
             </ol>
@@ -91,7 +90,8 @@ export default async function InstallPage() {
             <li><i>No key arrived</i>: the form has no row named <code>key</code>, or its right-hand box is empty. Paste your key there.</li>
             <li><i>That key is not active</i>: the key in the shortcut is not one Palette knows. Tap <b>Make my key</b> above, copy, and replace what is in the <code>key</code> row.</li>
             <li><i>The network connection was lost</i>: try once more, then try with Wi-Fi off. If it only fails on one Wi-Fi network, that network is blocking it; tell Trevor.</li>
-            <li><i>found no picture or link</i>: the two form fields are not both set to <b>Shortcut Input</b>, or their keys are not exactly <code>url</code> and <code>files</code> (lower case).</li>
+            <li><i>found no picture or link</i>: the first block accepts more than <b>URLs</b>, or the <code>url</code> row is not set to <b>Shortcut Input</b>.</li>
+            <li><i>couldn&apos;t convert from Rich Text</i>, or a notification full of code: the address box has a blue <b>Shortcut Input</b> bubble in it. Delete the bubble and leave only the typed address.</li>
             <li><b>No notification at all:</b> notifications for Shortcuts are off (Settings, Notifications, Shortcuts), or the address in the URL block has a typo.</li>
             <li><b>Palette is not in the share card:</b> open the shortcut, tap the <b>i</b>, and check <b>Show in Share Sheet</b> is on. Then look in the list of actions under the app icons, not among the icons.</li>
             <li>Still stuck: take a screenshot of the shortcut and send it to Trevor.</li>
