@@ -332,11 +332,20 @@ export async function getItem(id: string) {
             t.id AS "termId", t.slug, t.label,
             it.confidence::float AS confidence, it.source::text AS source, it.rejected, it.suggested,
             it.model_version AS "modelVersion", su.name AS "setByName"
-       FROM item_terms it
+       FROM (
+         -- REF-02: a post's tags are what was seen in any of its pictures, once
+         -- each. A person's word on the post itself wins: a removal there hides
+         -- the term however many slides the model saw it in, and an accepted
+         -- suggestion shows as theirs.
+         SELECT DISTINCT ON (it.term_id) it.*
+           FROM item_terms it JOIN items m ON m.id = it.item_id
+          WHERE m.id = $1 OR (m.group_id = $1 AND m.deleted_at IS NULL AND m.variant_of IS NULL)
+          ORDER BY it.term_id, (it.item_id = $1 AND it.source = 'human') DESC, it.rejected DESC,
+                   (it.source = 'human') DESC, it.suggested, it.confidence DESC
+       ) it
        JOIN taxonomy_terms t ON t.id = it.term_id
        JOIN taxonomy_facets f ON f.id = t.facet_id
        LEFT JOIN users su ON su.id = it.set_by
-      WHERE it.item_id = $1
       ORDER BY f.sort_order, it.confidence DESC`,
     [id],
   );
