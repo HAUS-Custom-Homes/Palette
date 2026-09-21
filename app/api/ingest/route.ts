@@ -97,6 +97,17 @@ export async function POST(req: NextRequest) {
   }
   res.headers.delete("x-palette-note");
   res.headers.delete("x-palette-user");
+
+  // An iPhone Shortcut gets the sentence itself, as plain text, so it can show
+  // the answer with no parsing step. Reading a value out of JSON was the step
+  // that failed on Trevor's phone (2026-09-20) before anything was sent.
+  if (/shortcuts|BackgroundShortcutRunner/i.test(ua) || req.nextUrl.searchParams.get("reply") === "text") {
+    const body = (await res.clone().json().catch(() => null)) as { message?: string; error?: string } | null;
+    return new NextResponse(body?.message ?? body?.error ?? "Palette answered, but said nothing.", {
+      status: res.status,
+      headers: { "content-type": "text/plain; charset=utf-8" },
+    });
+  }
   return res;
 }
 

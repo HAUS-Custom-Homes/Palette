@@ -40,9 +40,9 @@ filled in. Button names are from recent versions of iOS and may differ by a word
 10. **And the picture.** **Add new field**, **File**, key `files`, value **Shortcut Input**.
     Two fields because a share is sometimes a link and sometimes a picture; Palette uses
     whichever has something in it.
-11. **Read the answer.** Add the action `Get Dictionary Value`. Key: `message`.
-12. **Show the answer.** Add the action `Show Notification`. Replace "Hello World" with the
-    **Dictionary Value** variable.
+11. **Show the answer.** Add the action `Show Notification`. Replace "Hello World" with the
+    **Contents of URL** variable. Palette answers a Shortcut in plain words, so there is no
+    step in between. Three blocks in all: Receive, Get contents of, Show notification.
 13. **Test.** Newer iOS has no Done button; the shortcut saves itself. Press **Play** (bottom
     right). With nothing shared, the right answer is "found no picture or link": the phone reached
     Palette and the key was accepted. First real use: iPhone asks to allow sending to hauspalette.com (**Always Allow**) and
