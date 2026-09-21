@@ -5,7 +5,9 @@ import { redirect } from "next/navigation";
 import { createBoard, listBoards } from "@/boards/boards";
 import { Grid } from "./ui/grid";
 import { boot } from "@/lib/boot";
-import { queueDepth } from "@/ingest/tag-worker";
+import { revalidatePath } from "next/cache";
+import { db } from "@/db/client";
+import { queueDepth, requeue } from "@/ingest/tag-worker";
 import { facetCounts, search, stats, type SearchParams } from "@/search/query";
 import { SearchIcon } from "./ui/icons";
 import { Nav } from "./ui/nav";
@@ -79,6 +81,30 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
     facetCounts(params), search(params), stats(user.id), queueDepth(), listBoards(user.id),
   ]);
   const mode = taggerMode();
+
+  // Pictures saved before the key was in carry the stand-in tagger's guesses.
+  // Asked only for the owner, and only once smart tagging is on.
+  const roughlyTagged = mode === "claude" && user.role === "owner"
+    ? Number((await (await db()).one<{ n: string }>(
+        `SELECT count(DISTINCT it.item_id)::text AS n
+           FROM item_terms it JOIN items i ON i.id = it.item_id
+          WHERE it.source = 'ai' AND it.model_version LIKE 'heuristic%' AND i.deleted_at IS NULL
+            AND NOT EXISTS (SELECT 1 FROM ingest_jobs j
+                             WHERE j.dedupe_key = 'tag:' || it.item_id::text AND j.state IN ('queued','running'))`,
+        [],
+      ))?.n ?? 0)
+    : 0;
+
+  async function retagAll() {
+    "use server";
+    const u = await requireUser();
+    if (u.role !== "owner") return;
+    // FR-20: everything goes back on the queue under the current model. The
+    // worker drains it a batch a minute; FR-19 keeps every human tag as it is.
+    await requeue("all");
+    revalidatePath("/");
+  }
+
   const pending = (queue.queued ?? 0) + (queue.failed ?? 0) + (queue.running ?? 0);
   const mine = Boolean(params.ownerId);
   const anyFilter = Boolean(params.q || params.reviewOnly || mine || params.videoOnly || params.sinceDays || params.nearColor || Object.values(params.facets ?? {}).some((v) => v.length));
@@ -173,6 +199,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
             tag each image by itself, add an Anthropic API key in Railway (variable <code>ANTHROPIC_API_KEY</code>).
             Only you see this.
           </p>
+        )}
+
+        {mode === "claude" && user.role === "owner" && roughlyTagged > 0 && (
+          <form action={retagAll} className="notice">
+            <b>Smart tagging is on.</b> {roughlyTagged} {roughlyTagged === 1 ? "picture was" : "pictures were"} tagged
+            before it was, by a rough stand-in. Tags people set are never touched.{" "}
+            <button className="btn" type="submit">Re-tag them</button>
+          </form>
         )}
 
         {sp.shared === "failed" && (
