@@ -359,3 +359,18 @@ SELECT i.group_id, it.term_id, 1.0, 'human', it.set_by, false
   FROM item_terms it JOIN items i ON i.id = it.item_id
  WHERE i.group_id IS NOT NULL AND i.group_id <> i.id AND it.source = 'human' AND NOT it.rejected
 ON CONFLICT (item_id, term_id) DO NOTHING;
+
+-- What arrived at /api/ingest and what it was told. Written when a request
+-- arrives and completed when it is answered, so a request that killed the
+-- server shows as arrived and never answered. No keys, no bodies.
+CREATE TABLE IF NOT EXISTS ingest_log (
+  id          bigserial PRIMARY KEY,
+  at          timestamptz NOT NULL DEFAULT now(),
+  user_id     uuid,
+  ua          text,
+  content_type text,
+  bytes       bigint,
+  status      int,
+  ms          int,
+  note        text
+);

@@ -31,6 +31,18 @@ async function whoIs(req: NextRequest): Promise<User | null> {
   return currentUser();
 }
 
+/** What a form held, for the attempts record: field names, kinds and sizes. Never a value. */
+function shapeOf(form: FormData | null): string {
+  if (!form) return "fields=-";
+  const parts: string[] = [];
+  for (const [k, v] of form) {
+    parts.push(typeof v === "string"
+      ? `${k}:text(${v.length}${/https?:\/\//.test(v) ? ",link" : ""}${/plt_/i.test(v) ? ",key" : ""})`
+      : `${k}:file(${v.type || "?"},${v.size},${v.name.split(".").pop()?.slice(0, 8) ?? ""})`);
+  }
+  return `fields=${parts.join(" ").slice(0, 400) || "-"}`;
+}
+
 const MEDIA = new Set(["image", "video_cover", "video_frame"]);
 const intField = (v: string | undefined, min: number, max: number) => {
   const n = Number.parseInt(v ?? "", 10);
@@ -50,6 +62,18 @@ const numField = (v: string | undefined) => {
 export async function POST(req: NextRequest) {
   const started = Date.now();
   const ua = (req.headers.get("user-agent") ?? "").slice(0, 60);
+  const len = req.headers.get("content-length");
+  // Written on arrival and completed on answer (see /install/attempts): a
+  // request that took the server down shows as arrived and never answered.
+  const logId = await (async () => {
+    await boot();
+    const row = await (await db()).one<{ id: string }>(
+      `INSERT INTO ingest_log (ua, content_type, bytes) VALUES ($1, $2, $3) RETURNING id::text AS id`,
+      [ua, (req.headers.get("content-type") ?? "").split(";")[0], len && /^\d+$/.test(len) ? len : null],
+    );
+    return row?.id ?? null;
+  })().catch(() => null);
+
   let res: NextResponse;
   try {
     res = await handle(req);
@@ -59,9 +83,20 @@ export async function POST(req: NextRequest) {
       { error: "unexpected", message: "Palette hit a problem saving that. Try once more; if it repeats, tell Trevor the time." },
       { status: 500 },
     );
+    res.headers.set("x-palette-note", `crashed: ${(err as Error).message}`.slice(0, 300));
   }
-  console.log(`[ingest] ${res.status} ${Date.now() - started}ms ua="${ua}" len=${req.headers.get("content-length") ?? "?"} ${res.headers.get("x-palette-note") ?? ""}`);
+  const ms = Date.now() - started;
+  const note = res.headers.get("x-palette-note") ?? "";
+  const who = res.headers.get("x-palette-user");
+  console.log(`[ingest] ${res.status} ${ms}ms ua="${ua}" len=${len ?? "?"} ${note}`);
+  if (logId) {
+    await (await db()).query(
+      `UPDATE ingest_log SET status = $2, ms = $3, note = $4, user_id = $5 WHERE id = $1`,
+      [logId, res.status, ms, note || null, who || null],
+    ).catch(() => {});
+  }
   res.headers.delete("x-palette-note");
+  res.headers.delete("x-palette-user");
   return res;
 }
 
@@ -92,7 +127,9 @@ async function handle(req: NextRequest): Promise<NextResponse> {
       : !/plt_[A-Za-z0-9_-]{20,}/i.test(key)
         ? "The key looks cut off. Copy it again from Palette and paste the whole thing."
         : "That key is not active. Make a new one in Palette and paste it in.";
-    return NextResponse.json({ error: "sign in, or send a device token", message }, { status: 401 });
+    const refused = NextResponse.json({ error: "sign in, or send a device token", message }, { status: 401 });
+    refused.headers.set("x-palette-note", `${shapeOf(early)} -> "${message}"`);
+    return refused;
   }
   if (user.role === "viewer") {
     return NextResponse.json({ error: "viewers cannot add", message: "Your Palette account can look but not save. Ask Trevor to change your role." }, { status: 403 });
@@ -203,10 +240,13 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   }
 
   if (!files.length && !url) {
-    return NextResponse.json(
+    const empty = NextResponse.json(
       { error: "nothing to save", message: "Palette found no picture or link in what was shared. Try sharing the post's link, or a screenshot." },
       { status: 400 },
     );
+    empty.headers.set("x-palette-note", `${shapeOf(form)} -> "nothing to save"`);
+    empty.headers.set("x-palette-user", user.id);
+    return empty;
   }
 
   // Post-response work that survives the response ending (Vercel-safe).
@@ -237,6 +277,7 @@ async function handle(req: NextRequest): Promise<NextResponse> {
 
   const out = NextResponse.json({ saved, duplicates, variants, failed, errors, itemId: post?.id ?? lastItemId, post, message });
   // For the log line only; stripped before the reply leaves.
-  out.headers.set("x-palette-note", `files=${allFiles.map((f) => `${f.type || "?"}:${f.size}`).join(",") || "-"} link=${url ? new URL(url).hostname : "-"} -> "${message}"`);
+  out.headers.set("x-palette-note", `${shapeOf(form)} link=${url ? new URL(url).hostname : "-"}${errors[0] ? ` err="${errors[0].slice(0, 120)}"` : ""} -> "${message}"`);
+  out.headers.set("x-palette-user", user.id);
   return out;
 }
