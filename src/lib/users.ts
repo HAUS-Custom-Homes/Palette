@@ -67,8 +67,14 @@ export async function createDeviceToken(userId: string, label: string): Promise<
   return { id: row!.id, token };
 }
 
-export async function resolveDeviceToken(token: string): Promise<User | null> {
-  if (!token.startsWith("plt_")) return null;
+export async function resolveDeviceToken(raw: string): Promise<User | null> {
+  // A key is pasted by hand into a phone. It arrives with a trailing space or
+  // newline, with "Bearer" typed twice or not at all, inside quotes, or with
+  // the phone's autocorrect having had a go at the prefix. None of that is a
+  // reason to turn someone away: the key is the run of characters starting at
+  // plt_, and the rest is packaging. The secret part is still matched exactly.
+  const token = /plt_[A-Za-z0-9_-]{20,}/i.exec(raw)?.[0]?.replace(/^plt_/i, "plt_");
+  if (!token) return null;
   const d = await db();
   const row = await d.one<User & { token_id: string }>(
     `SELECT u.id, u.email, u.name, u.role::text AS role, t.id AS token_id

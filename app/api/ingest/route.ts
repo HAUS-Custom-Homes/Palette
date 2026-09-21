@@ -17,9 +17,17 @@ import { runTagQueue } from "@/ingest/tag-worker";
  * Two ways in: a session cookie (the web app) or a device token in the
  * Authorization header (a phone). Nothing else.
  */
+/** The key, wherever a person managed to put it: the right header, or one whose name they misspelled. */
+function keyIn(req: NextRequest): string | null {
+  const proper = req.headers.get("authorization");
+  if (proper && /plt_/i.test(proper)) return proper;
+  for (const [, value] of req.headers) if (/plt_[A-Za-z0-9_-]{20,}/i.test(value)) return value;
+  return proper;
+}
+
 async function whoIs(req: NextRequest): Promise<User | null> {
-  const bearer = req.headers.get("authorization")?.replace(/^Bearer\s+/i, "");
-  if (bearer) return resolveDeviceToken(bearer);
+  const key = keyIn(req);
+  if (key) return resolveDeviceToken(key);
   return currentUser();
 }
 
@@ -38,10 +46,14 @@ export async function POST(req: NextRequest) {
   const user = await whoIs(req);
   // `message` is what a phone's notification shows, so every answer carries one.
   if (!user) {
-    return NextResponse.json(
-      { error: "sign in, or send a device token", message: "Palette did not recognise this phone's key. Open Palette, make a new key, and paste it into the Shortcut's Authorization header." },
-      { status: 401 },
-    );
+    // Say which of the two it is, in few enough words to fit a notification.
+    const key = keyIn(req);
+    const message = !key
+      ? "No key arrived. In the Shortcut: Headers, Key = Authorization, Text = your key."
+      : !/plt_[A-Za-z0-9_-]{20,}/i.test(key)
+        ? "The key looks cut off. Copy it again from Palette and paste the whole thing."
+        : "That key is not active. Make a new one in Palette and paste it in.";
+    return NextResponse.json({ error: "sign in, or send a device token", message }, { status: 401 });
   }
   if (user.role === "viewer") {
     return NextResponse.json({ error: "viewers cannot add", message: "Your Palette account can look but not save. Ask Trevor to change your role." }, { status: 403 });
