@@ -69,6 +69,7 @@ export type ItemRow = {
   sourceKind: string | null;
   sourceUrl: string | null;
   ownerName: string | null;
+  ownerImage: string | null;
   needsReview: number;
   /** REF-02: how many pictures and videos the post holds, and whether one is a video. */
   mediaCount: number;
@@ -170,7 +171,7 @@ const ITEM_SELECT = `
          i.captured_at::text AS "capturedAt",
          (SELECT kind::text FROM sources s WHERE s.item_id = i.id ORDER BY s.fetched_at LIMIT 1) AS "sourceKind",
          (SELECT source_url FROM sources s WHERE s.item_id = i.id AND s.source_url IS NOT NULL ORDER BY s.fetched_at LIMIT 1) AS "sourceUrl",
-         u.name AS "ownerName",
+         COALESCE(u.name, split_part(u.email, '@', 1)) AS "ownerName", u.image AS "ownerImage",
          (SELECT t.label FROM item_terms it JOIN taxonomy_terms t ON t.id = it.term_id
             JOIN taxonomy_facets f ON f.id = t.facet_id
            WHERE it.item_id = i.id AND f.key = 'project' AND NOT it.rejected
@@ -318,7 +319,7 @@ export async function getItem(id: string) {
   const item = await d.one<Record<string, unknown>>(
     `SELECT i.*, a.sha256, a.width, a.height, a.blurhash, a.mime_type AS "mimeType",
             a.byte_size AS "byteSize", a.dhash, a.storage_key AS "storageKey",
-            u.name AS "ownerName", u.email AS "ownerEmail"
+            COALESCE(u.name, split_part(u.email, '@', 1)) AS "ownerName", u.email AS "ownerEmail", u.image AS "ownerImage"
        FROM items i JOIN assets a ON a.id = i.asset_id
        LEFT JOIN users u ON u.id = i.created_by
       WHERE i.id = $1`,

@@ -8,7 +8,7 @@ import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
 import { requeue, runTagQueue } from "@/ingest/tag-worker";
 import { getItem, postFor, postMedia, similar } from "@/search/query";
-import { displayName, platformOf } from "../../ui/icons";
+import { By, displayName, platformOf } from "../../ui/icons";
 import { captionOf } from "@/ingest/page-preview";
 import { ItemBoardPicker } from "./board-picker";
 import { Carousel } from "./carousel";
@@ -51,7 +51,11 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
   const like = await similar(id, 8);
   const post = await postFor(id);
   const media = await postMedia(id);
-  const startSlide = Math.max(0, Number(sp.slide ?? 1) - 1) || 0;
+  const when = item.captured_at ? new Date(String(item.captured_at)) : null;
+  const savedOn = when && !Number.isNaN(when.getTime())
+    ? when.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
+    : "";
+  const startSlide =Math.max(0, Number(sp.slide ?? 1) - 1) || 0;
   const isVideo = media.some((m) => m.videoSha || m.videoMissing);
   const stills = media.filter((m) => m.frameTimeS == null).length;
   const unsaved = post?.slideCount ? Math.max(0, post.slideCount - stills) : 0;
@@ -223,7 +227,8 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
                 View on {({ instagram: "Instagram", pinterest: "Pinterest", tiktok: "TikTok", youtube: "YouTube", web: "the web", phone: "the web" } as const)[platformOf(post.kind, post.sourceUrl) ?? "web"]}
               </a>
             )}
-            <span>Saved by {String(item.ownerName ?? "someone")} · {String(item.captured_at ?? "").slice(0, 10)}</span>
+            {item.ownerName ? <By name={String(item.ownerName)} image={item.ownerImage ? String(item.ownerImage) : null} prefix="Saved by" /> : null}
+            <span>{savedOn}</span>
           </div>
           <h2 className="item-title">{displayName(item.caption_ai, item.title)}</h2>
           <p className="item-by">

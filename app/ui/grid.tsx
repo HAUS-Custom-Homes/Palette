@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ItemRow } from "@/search/query";
 import { BoardPicker } from "./board-picker";
-import { PLATFORM_NAME, PlatformMark, PlayIcon, StackIcon, clock, displayName, platformOf } from "./icons";
+import { By, PLATFORM_NAME, PlatformMark, PlayIcon, StackIcon, clock, displayName, platformOf } from "./icons";
 
 /**
  * REF-01 FR-28, FR-30, FR-32, FR-36.
@@ -184,6 +184,7 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
               {platform && <span className="ghost" title={`Saved from ${PLATFORM_NAME[platform]}`}><PlatformMark platform={platform} /></span>}
               <div className="tile-meta">
                 <h3>{displayName(it.captionAi, it.title)}</h3>
+                {it.ownerName && <By name={it.ownerName} image={it.ownerImage} />}
               </div>
             </div>
           );

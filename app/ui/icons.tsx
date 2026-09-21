@@ -68,6 +68,24 @@ export function SourceIcon({ kind }: { kind: string | null }) {
 }
 
 /**
+ * Who saved it: their Google picture when there is one, their initials when
+ * there is not, and their first name. Small enough to sit under a card's title.
+ */
+export function By({ name, image, prefix }: { name: string; image?: string | null; prefix?: string }) {
+  const word = name.trim().split(/\s+/)[0] ?? name;
+  const first = word.charAt(0).toUpperCase() + word.slice(1);
+  const initials = name.trim().split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
+  return (
+    <span className="by-line" title={`Saved by ${name}`}>
+      {image
+        ? <img className="by-face" src={image} alt="" referrerPolicy="no-referrer" loading="lazy" />
+        : <span className="by-face" aria-hidden>{initials}</span>}
+      {prefix ? `${prefix} ${first}` : first}
+    </span>
+  );
+}
+
+/**
  * What to call an image. The model's caption when there is one; otherwise the
  * title it arrived with. The no-key tagger's placeholder caption is not a name.
  */
