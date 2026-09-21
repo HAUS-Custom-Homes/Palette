@@ -46,7 +46,7 @@ one-tap **Add the Palette Shortcut** button (`PALETTE_SHORTCUT_URL` in Railway).
 
 ## 3. Use it
 
-In any app, tap **Share**, then **Palette** in the list of apps. The notification confirms it.
+In any app, tap **Share**. **Palette** is in the list of actions under the row of app icons (next to Copy and Save Image), not in the row of icons, which Apple keeps for App Store apps. To pin it to the top: scroll to the bottom of the share card, **Edit Actions...**, green **+** beside Palette. In Instagram, tap the paper plane and then **Share to...** to reach the iPhone share card. The notification confirms it.
 The image is in the library in a few seconds and tagged within about a minute. If you shared
 a screenshot, nothing is fetched from anywhere: the picture itself is what gets saved, which is
 the most reliable path there is.

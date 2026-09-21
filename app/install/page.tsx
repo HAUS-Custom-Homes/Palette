@@ -51,7 +51,9 @@ export default async function InstallPage() {
           </li>
         ) : (
           <li>
-            <b>Build the Shortcut.</b> Open the <b>Shortcuts</b> app, tap <b>+</b>, and name it <b>Palette</b>.
+            <b>Build the Shortcut.</b> Open <b>Shortcuts</b>, Apple&apos;s own app that comes on every iPhone (a dark
+            icon with overlapping pink and blue shapes; swipe down on the Home Screen and type Shortcuts, or get it free
+            from the App Store if you removed it). Tap <b>+</b> and name the new shortcut <b>Palette</b>.
             <ol className="steps">
               <li>Tap the <b>i</b> at the bottom. Turn on <b>Show in Share Sheet</b>. Under <b>Share Sheet Types</b>, keep only <b>Images</b>, <b>Media</b> and <b>URLs</b>.</li>
               <li>Add the action <b>Get Contents of URL</b>. Set URL to <code>{host}/api/ingest</code></li>
@@ -63,9 +65,14 @@ export default async function InstallPage() {
           </li>
         )}
         <li>
-          <b>Try it.</b> Open any Instagram post, tap the paper-plane or <b>Share</b>, then <b>Share to</b>, then
-          <b> Palette</b>. The first time, scroll to the end of the row of apps, tap <b>More</b> and add Palette to
-          your favourites so it is always first.
+          <b>Try it.</b> Open any Instagram post, tap the paper plane, then <b>Share to...</b> (or the three dots, then
+          <b> Share to...</b>). The iPhone share card slides up. <b>Palette</b> is in the list of actions under the row
+          of app icons, next to things like Copy and Save Image. It is not in the row of app icons: Apple keeps that
+          row for App Store apps.
+        </li>
+        <li>
+          <b>Pin it to the top.</b> Scroll to the bottom of the share card, tap <b>Edit Actions...</b>, and tap the
+          green <b>+</b> beside Palette. It stays at the top of the list from then on.
         </li>
         <li>
           <b>Put Palette on your Home Screen.</b> In Safari open <code>{host.replace(/^https?:\/\//, "")}</code>, tap
