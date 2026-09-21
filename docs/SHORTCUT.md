@@ -20,21 +20,34 @@ off without touching the others.
 
 ## 2. Build the Shortcut
 
-1. Open the **Shortcuts** app. Tap **+** to make a new one. Name it **Palette**.
-2. Tap the **i** at the bottom of the screen. Turn on **Show in Share Sheet**.
-   Under **Share Sheet Types**, keep only **Images**, **Media** and **URLs**.
-3. Add the action **Get Contents of URL**.
-   - URL: `https://hauspalette.com/api/ingest`
-   - Tap **Show More**. Method: **POST**
-   - Headers: add one. Key `Authorization`, value: paste your key (it starts with `Bearer`)
-   - Request Body: **Form**
-   - Add a field: key `files`, type **File**, value **Shortcut Input**
-   One field is enough. A picture goes up as a picture; a link goes up as a link and Palette
-   finds it, then brings the whole post: every image, and the video when it can be had.
-4. Add the action **Get Dictionary Value**: get **Value** for `message`.
-5. Add the action **Show Notification** and put the **Dictionary Value** in it. It will say
-   "Saved to Palette · 7 items", "Already in Palette", or why it could not save.
-6. Done. The first time you use it, iOS asks to allow the connection to hauspalette.com: **Always Allow**.
+The page "Get the app and share sheet" in Palette has these same steps with your own address
+filled in. Button names are from recent versions of iOS and may differ by a word on yours.
+
+1. Open **Shortcuts** (Apple's own app, on every iPhone: a dark icon with overlapping pink and
+   blue shapes). Tap **+** at the top right.
+2. **Name it.** Tap the name at the top, **Rename**, type `Palette`.
+3. **Put it in the share card.** Tap the **i** in a circle at the bottom. Turn on **Show in Share
+   Sheet**. **Done.** A block appears at the top: *Receive Any input from Share Sheet*.
+4. **Say what it accepts.** Tap the blue **Any**. Clear everything, then switch on only
+   **Images**, **Media** and **URLs**. **Done.**
+5. **Add the sending step.** In the search bar at the bottom type `Get Contents of URL` and tap it.
+6. **The address.** Tap the faint blue **URL** and type exactly `https://hauspalette.com/api/ingest`
+7. **Options.** Tap the small arrow at the right of that block. **Method**: **POST**.
+8. **Your key.** **Headers**, **Add new header**. Key `Authorization`. Text: paste the key from
+   step 1 (it starts with `Bearer` and a space).
+9. **What to send.** **Request Body**: **Form**. **Add new field**, **Text**, key `url`, value
+   **Shortcut Input** (from the strip above the keyboard).
+10. **And the picture.** **Add new field**, **File**, key `files`, value **Shortcut Input**.
+    Two fields because a share is sometimes a link and sometimes a picture; Palette uses
+    whichever has something in it.
+11. **Read the answer.** Add the action `Get Dictionary Value`. Key: `message`.
+12. **Show the answer.** Add the action `Show Notification`. Replace "Hello World" with the
+    **Dictionary Value** variable.
+13. **Done.** First use: iPhone asks to allow sending to hauspalette.com (**Always Allow**) and
+    perhaps to allow Shortcuts notifications (**Allow**).
+
+The notification then says "Saved to Palette · 7 items", "Already in Palette", or exactly why it
+could not save (a bad key, nothing to save, a post that could not be read).
 
 ## Sharing the Shortcut with the team (Trevor, once)
 

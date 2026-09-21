@@ -36,8 +36,16 @@ const numField = (v: string | undefined) => {
 export async function POST(req: NextRequest) {
   await boot();
   const user = await whoIs(req);
-  if (!user) return NextResponse.json({ error: "sign in, or send a device token" }, { status: 401 });
-  if (user.role === "viewer") return NextResponse.json({ error: "viewers cannot add" }, { status: 403 });
+  // `message` is what a phone's notification shows, so every answer carries one.
+  if (!user) {
+    return NextResponse.json(
+      { error: "sign in, or send a device token", message: "Palette did not recognise this phone's key. Open Palette, make a new key, and paste it into the Shortcut's Authorization header." },
+      { status: 401 },
+    );
+  }
+  if (user.role === "viewer") {
+    return NextResponse.json({ error: "viewers cannot add", message: "Your Palette account can look but not save. Ask Trevor to change your role." }, { status: 403 });
+  }
 
   const contentType = req.headers.get("content-type") ?? "";
 
