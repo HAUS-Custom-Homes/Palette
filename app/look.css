@@ -356,3 +356,15 @@ section.panel h3 { font-size: 12.5px; }
 .board-meta { padding: 12px 14px 14px; font-size: 14px; }
 .client-card { border-radius: var(--radius-tile); border: 0; }
 .attention-row { border-radius: var(--radius); }
+
+/* ---- adding a tag on a picture (2026-09-22): type, pick, or create ---- */
+.addtag { margin-top: 8px; }
+.addtag-row { display: flex; gap: 6px; align-items: center; }
+.addtag-row .search { flex: 1; padding: 7px 10px; font-size: 13px; }
+.addtag-list { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; }
+.addtag-opt { text-align: left; border: 0; background: transparent; color: var(--text); padding: 6px 8px; border-radius: 8px; font: inherit; font-size: 13px; cursor: pointer; }
+.addtag-opt:hover { background: var(--surface-2); }
+.addtag-opt .hint { margin-left: 6px; }
+.addtag-opt[data-kind="proposal"] { color: var(--accent); }
+.addtag-new { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px; border-top: 1px solid var(--line); margin-top: 4px; font-size: 13px; }
+.addtag-near { margin-top: 8px; padding: 10px; border: 1px dashed var(--accent-dim); border-radius: 12px; }

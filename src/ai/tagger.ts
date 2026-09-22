@@ -39,10 +39,15 @@ export class ClaudeTagger implements Tagger {
     this.name = model;
   }
 
+  private facetsAt = 0;
   private async facets() {
-    // Read once per process. A term added in the admin UI takes effect on the
-    // next run, which is the right granularity for a batch job.
-    if (!this.facetsCache) this.facetsCache = await loadTaxonomy();
+    // Re-read every few minutes: the production worker is one long-lived
+    // process, and a word a person adds on a picture should reach the model
+    // without a restart.
+    if (!this.facetsCache || Date.now() - this.facetsAt > 5 * 60_000) {
+      this.facetsCache = await loadTaxonomy();
+      this.facetsAt = Date.now();
+    }
     return this.facetsCache;
   }
 

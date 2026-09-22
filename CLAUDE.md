@@ -47,7 +47,9 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
   `item_terms.suggested = true`: shown dashed, counted in review, excluded from filters and
   facet counts. `applyTags()` decides; `tests/gates.test.ts` proves it. Do not bypass with SQL.
 - **The model never sees an open facet.** `project` (Haus) is human-only. Closed facets grow only
-  through `proposed_terms` and a human promotion. `createOpenTerm()` refuses closed facets.
+  through a person: promoting a `proposed_terms` row, or creating a word on a picture (`src/taxonomy/terms.ts`,
+  which first matches the word against existing terms and synonyms so one thing never gets two terms; 2026-09-22).
+  `createOpenTerm()` refuses closed facets; the model only ever proposes.
 - **`src/auth.config.ts` runs on the Edge runtime.** It imports nothing from Node and not even
   `src/config.ts`. Database work belongs in `src/auth.ts` callbacks only.
 - Native and WASM packages stay in `serverExternalPackages` in `next.config.mjs` (plain JS on purpose: a .ts config makes the production image install TypeScript on every boot): `sharp`,

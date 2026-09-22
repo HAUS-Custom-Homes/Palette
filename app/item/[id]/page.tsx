@@ -10,6 +10,7 @@ import { requeue, runTagQueue } from "@/ingest/tag-worker";
 import { getItem, memberTags, postFor, postMedia, similar } from "@/search/query";
 import { By, displayName, platformOf } from "../../ui/icons";
 import { captionOf } from "@/ingest/page-preview";
+import { pendingProposals } from "@/taxonomy/terms";
 import { ItemBoardPicker } from "./board-picker";
 import { Carousel } from "./carousel";
 import { SlidePanel } from "./slide-panel";
@@ -118,11 +119,15 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
   const boards = await boardsForItem(id, user.id);
 
   const d = await db();
-  const allTerms = await d.query<{ id: string; label: string; facetKey: string; facetLabel: string }>(
-    `SELECT t.id, t.label, f.key AS "facetKey", f.label AS "facetLabel"
+  const allTerms = await d.query<{ id: string; label: string; facetKey: string; facetLabel: string; synonyms: string[] }>(
+    `SELECT t.id, t.label, f.key AS "facetKey", f.label AS "facetLabel", t.synonyms
        FROM taxonomy_terms t JOIN taxonomy_facets f ON f.id = t.facet_id
       WHERE t.status = 'active' AND f.key <> 'project' ORDER BY f.sort_order, t.label`,
   );
+  const closedFacets = await d.query<{ key: string; label: string }>(
+    `SELECT key, label FROM taxonomy_facets WHERE key <> 'project' ORDER BY sort_order`,
+  );
+  const proposals = await pendingProposals();
   const allHauses = await d.query<{ id: string; label: string }>(
     `SELECT t.id, t.label FROM taxonomy_terms t JOIN taxonomy_facets f ON f.id = t.facet_id
       WHERE f.key = 'project' AND t.status = 'active' ORDER BY t.label`,
@@ -365,7 +370,7 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
                         ))}
                       </div>
                     ))}
-                    {user.role !== "viewer" && <AddTag itemId={m.id} slide={i + 1} terms={allTerms.filter((t) => !active.some((a) => a.termId === t.id))} action={toggle} />}
+                    {user.role !== "viewer" && <AddTag itemId={m.id} slide={i + 1} terms={allTerms.filter((t) => !active.some((a) => a.termId === t.id))} facets={closedFacets} proposals={proposals} />}
                   </div>
 
                   {rejected.length > 0 && (
