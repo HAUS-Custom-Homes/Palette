@@ -9,7 +9,7 @@ type Term = { id: string; label: string; facetKey: string; facetLabel: string };
  * already has. Closed facets grow through proposals, not through a text box,
  * which is how every shared tag system ends up with five words for one tile.
  */
-export function AddTag({ itemId, terms, action }: { itemId: string; terms: Term[]; action: (fd: FormData) => void }) {
+export function AddTag({ itemId, slide, terms, action }: { itemId: string; slide?: number; terms: Term[]; action: (fd: FormData) => void }) {
   const [open, setOpen] = useState(false);
   if (!open) return <button className="btn" onClick={() => setOpen(true)} style={{ marginTop: 6 }}>+ add a tag</button>;
 
@@ -18,6 +18,7 @@ export function AddTag({ itemId, terms, action }: { itemId: string; terms: Term[
   return (
     <form action={action} style={{ marginTop: 8, display: "flex", gap: 6 }}>
       <input type="hidden" name="itemId" value={itemId} />
+      {slide ? <input type="hidden" name="slide" value={slide} /> : null}
       <input type="hidden" name="action" value="add" />
       <select name="termId" className="search" style={{ padding: "6px 8px", fontSize: 12 }} defaultValue="">
         <option value="" disabled>choose a term...</option>

@@ -41,3 +41,30 @@ export async function gateSummary(model: string) {
     recall: r.recall ? Number(r.recall) : null, threshold: r.threshold ? Number(r.threshold) : null, samples: r.samples, ranAt: r.ran_at,
   }));
 }
+
+/**
+ * The owner's decision to apply the model's tags without the measured gate
+ * (2026-09-22, Trevor: "the tags should apply automatically"). Recorded in the
+ * same table the eval writes, as the wildcard facet, so applyTags() needs no
+ * special case and the decision is visible and reversible. Tags this model
+ * already wrote as suggestions become applied. Human rows are not touched.
+ */
+export async function trustModel(model: string, byUserId: string): Promise<number> {
+  const d = await db();
+  await d.query(
+    `INSERT INTO facet_gates (facet_key, model, passed, samples) VALUES ('*', $1, true, 0)
+     ON CONFLICT (facet_key, model) DO UPDATE SET passed = true, ran_at = now()`,
+    [model],
+  );
+  const rows = await d.query<{ item_id: string }>(
+    `UPDATE item_terms SET suggested = false
+      WHERE source = 'ai' AND suggested = true AND model_version = $1 RETURNING item_id`,
+    [model],
+  );
+  await d.query(
+    `INSERT INTO audit_events (actor_id, entity, entity_id, action, detail)
+     VALUES ($1, 'facet_gate', $2, 'trusted', $3)`,
+    [byUserId, model, JSON.stringify({ applied: rows.length })],
+  ).catch(() => {});
+  return rows.length;
+}

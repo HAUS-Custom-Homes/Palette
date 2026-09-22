@@ -38,9 +38,9 @@ export function Carousel({
     setCur(to);
   }, [n]);
 
-  // Land on the slide the link asked for, without an animation.
-  useEffect(() => { if (cur > 0) go(cur, false); /* once */ // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // Land on the slide the link asked for, without an animation; again whenever
+  // the page comes back asking for a different one (after a tag is changed).
+  useEffect(() => { go(Math.min(Math.max(start, 0), n - 1), false); }, [start, n, go]);
 
   useEffect(() => {
     const t = track.current;
@@ -73,6 +73,15 @@ export function Carousel({
       else v.play().catch(() => {});
       void i;
     });
+  }, [cur]);
+
+  // The rest of the page follows the slide: the tags panel shows this
+  // picture's tags, and the address keeps the slide so a copied link lands here.
+  useEffect(() => {
+    window.dispatchEvent(new CustomEvent("palette:slide", { detail: cur }));
+    const u = new URL(window.location.href);
+    if (cur > 0) u.searchParams.set("slide", String(cur + 1)); else u.searchParams.delete("slide");
+    window.history.replaceState(window.history.state, "", u.toString());
   }, [cur]);
 
   const m = media[cur]!;

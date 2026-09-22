@@ -314,6 +314,34 @@ export async function facetCounts(p0: SearchParams): Promise<FacetCount[]> {
   return out;
 }
 
+/**
+ * REF-02, revised 2026-09-22: tags belong to the picture they were seen in.
+ * Every member of a post, in slide order, with its own rows. The haus stays on
+ * the post (see getItem).
+ */
+export async function memberTags(leadId: string): Promise<Map<string, Array<Record<string, unknown>>>> {
+  const d = await db();
+  const rows = await d.query<Record<string, unknown> & { itemId: string }>(
+    `SELECT it.item_id AS "itemId",
+            f.key AS "facetKey", f.label AS "facetLabel", f.is_open AS "facetOpen",
+            t.id AS "termId", t.slug, t.label,
+            it.confidence::float AS confidence, it.source::text AS source, it.rejected, it.suggested,
+            it.model_version AS "modelVersion", su.name AS "setByName"
+       FROM item_terms it
+       JOIN items m ON m.id = it.item_id
+       JOIN taxonomy_terms t ON t.id = it.term_id
+       JOIN taxonomy_facets f ON f.id = t.facet_id
+       LEFT JOIN users su ON su.id = it.set_by
+      WHERE (m.id = $1 OR (m.group_id = $1 AND m.deleted_at IS NULL AND m.variant_of IS NULL))
+        AND f.key <> 'project'
+      ORDER BY f.sort_order, it.confidence DESC NULLS LAST`,
+    [leadId],
+  );
+  const out = new Map<string, Array<Record<string, unknown>>>();
+  for (const { itemId, ...r } of rows) out.set(itemId, [...(out.get(itemId) ?? []), r]);
+  return out;
+}
+
 export async function getItem(id: string) {
   const d = await db();
   const item = await d.one<Record<string, unknown>>(

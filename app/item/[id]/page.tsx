@@ -7,11 +7,12 @@ import { addToBoard, boardsForItem, removeFromBoard } from "@/boards/boards";
 import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
 import { requeue, runTagQueue } from "@/ingest/tag-worker";
-import { getItem, postFor, postMedia, similar } from "@/search/query";
+import { getItem, memberTags, postFor, postMedia, similar } from "@/search/query";
 import { By, displayName, platformOf } from "../../ui/icons";
 import { captionOf } from "@/ingest/page-preview";
 import { ItemBoardPicker } from "./board-picker";
 import { Carousel } from "./carousel";
+import { SlidePanel } from "./slide-panel";
 import { Nav } from "../../ui/nav";
 import { AddTag } from "./add-tag";
 import { HausPicker } from "./haus-picker";
@@ -51,6 +52,7 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
   const like = await similar(id, 8);
   const post = await postFor(id);
   const media = await postMedia(id);
+  const perSlide = (await memberTags(id)) as Map<string, Tag[]>;
   const when = item.captured_at ? new Date(String(item.captured_at)) : null;
   const savedOn = when && !Number.isNaN(when.getTime())
     ? when.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })
@@ -76,19 +78,20 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
     revalidatePath(`/item/${id}`);
   }
 
-  const active = tags.filter((t) => !t.rejected && t.facetKey !== "project");
+  // The haus is the post's. Tags are each picture's (perSlide).
   const hausTags = tags.filter((t) => !t.rejected && t.facetKey === "project");
-  const rejected = tags.filter((t) => t.rejected);
-
-  const byFacet = new Map<string, Tag[]>();
-  for (const t of active) byFacet.set(t.facetLabel, [...(byFacet.get(t.facetLabel) ?? []), t]);
 
   async function toggle(formData: FormData) {
     "use server";
     const u = await requireUser();
     const itemId = String(formData.get("itemId"));
     await setHumanTag(itemId, String(formData.get("termId")), String(formData.get("action")) as "add" | "remove", u.id);
-    revalidatePath(`/item/${itemId}`);
+    // The picture may be one slide of a post; the page is the post's, and it
+    // comes back on the slide the person was looking at.
+    const lead = await (await db()).one<{ lead: string }>(`SELECT COALESCE(group_id, id)::text AS lead FROM items WHERE id = $1`, [itemId]);
+    const slide = Number(formData.get("slide") ?? 1);
+    revalidatePath(`/item/${lead?.lead ?? itemId}`);
+    redirect(`/item/${lead?.lead ?? itemId}${slide > 1 ? `?slide=${slide}` : ""}`);
   }
 
   async function retry(formData: FormData) {
@@ -317,58 +320,76 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
             <HausPicker itemId={id} hauses={allHauses.filter((h) => !hausTags.some((t) => t.termId === h.id))} action={toggle} />
           </div>
 
-          <div className="panel">
-            <h3>Tags</h3>
-            {active.length === 0 && job?.state !== "quarantined" && (
-              <p className="hint" style={{ margin: 0 }}>Not tagged yet. It is in the queue.</p>
-            )}
-            {[...byFacet.entries()].map(([facet, list]) => (
-              <div key={facet} style={{ marginBottom: 10 }}>
-                <div className="facet-label">{facet}</div>
-                {list.map((t) => (
-                  <span className="tag" key={t.termId} data-src={t.source} data-suggested={t.suggested}
-                        data-low={t.source === "ai" && (t.confidence ?? 1) < 0.65}
-                        title={t.source === "human" ? `Set by ${t.setByName ?? "a person"}. No model run can change this.` : t.suggested ? `Suggested by ${t.modelVersion ?? "ai"}, which has not passed the quality gate for ${t.facetLabel.toLowerCase()}. Not used for filtering until accepted.` : `${t.modelVersion ?? "ai"}, confidence ${(t.confidence ?? 0).toFixed(2)}`}>
-                    {t.label}
-                    {t.source === "ai" ? <span className="conf">{t.suggested ? "suggested" : (t.confidence ?? 0).toFixed(2)}</span> : <span className="conf">{t.setByName ?? "human"}</span>}
-                    {t.suggested && (
-                      <form action={toggle} style={{ display: "inline" }}>
-                        <input type="hidden" name="itemId" value={id} />
-                        <input type="hidden" name="termId" value={t.termId} />
-                        <input type="hidden" name="action" value="add" />
-                        <button type="submit" title="Accept: makes it yours, permanently">✓</button>
-                      </form>
+          {/* Tags belong to the picture on screen. The panel follows the carousel. */}
+          <SlidePanel start={startSlide}>
+            {media.map((m, i) => {
+              const mine = perSlide.get(m.id) ?? [];
+              const active = mine.filter((t) => !t.rejected);
+              const rejected = mine.filter((t) => t.rejected);
+              const byFacet = new Map<string, Tag[]>();
+              for (const t of active) byFacet.set(t.facetLabel, [...(byFacet.get(t.facetLabel) ?? []), t]);
+              const tagged = m.id === id ? job?.state !== "quarantined" : true;
+              return (
+                <div key={m.id}>
+                  <div className="panel">
+                    <h3>Tags{media.length > 1 ? <span className="hint" style={{ marginLeft: 8, letterSpacing: 0, textTransform: "none" }}>picture {i + 1} of {media.length}</span> : null}</h3>
+                    {active.length === 0 && tagged && (
+                      <p className="hint" style={{ margin: 0 }}>Not tagged yet. It is in the queue.</p>
                     )}
-                    <form action={toggle} style={{ display: "inline" }}>
-                      <input type="hidden" name="itemId" value={id} />
-                      <input type="hidden" name="termId" value={t.termId} />
-                      <input type="hidden" name="action" value="remove" />
-                      <button type="submit" title="Remove, permanently">×</button>
-                    </form>
-                  </span>
-                ))}
-              </div>
-            ))}
-            <AddTag itemId={id} terms={allTerms} action={toggle} />
-          </div>
+                    {[...byFacet.entries()].map(([facet, list]) => (
+                      <div key={facet} style={{ marginBottom: 10 }}>
+                        <div className="facet-label">{facet}</div>
+                        {list.map((t) => (
+                          <span className="tag" key={t.termId} data-src={t.source} data-suggested={t.suggested}
+                                data-low={t.source === "ai" && (t.confidence ?? 1) < 0.65}
+                                title={t.source === "human" ? `Set by ${t.setByName ?? "a person"}. No model run can change this.` : t.suggested ? `Suggested by ${t.modelVersion ?? "ai"}. Not used for filtering until accepted.` : `${t.modelVersion ?? "ai"}, confidence ${(t.confidence ?? 0).toFixed(2)}`}>
+                            {t.label}
+                            {t.source === "ai" ? <span className="conf">{t.suggested ? "suggested" : (t.confidence ?? 0).toFixed(2)}</span> : <span className="conf">{t.setByName ?? "human"}</span>}
+                            {t.suggested && (
+                              <form action={toggle} style={{ display: "inline" }}>
+                                <input type="hidden" name="itemId" value={m.id} />
+                            <input type="hidden" name="slide" value={i + 1} />
+                                <input type="hidden" name="termId" value={t.termId} />
+                                <input type="hidden" name="action" value="add" />
+                                <button type="submit" title="Accept: makes it yours, permanently">✓</button>
+                              </form>
+                            )}
+                            <form action={toggle} style={{ display: "inline" }}>
+                              <input type="hidden" name="itemId" value={m.id} />
+                            <input type="hidden" name="slide" value={i + 1} />
+                              <input type="hidden" name="termId" value={t.termId} />
+                              <input type="hidden" name="action" value="remove" />
+                              <button type="submit" title="Remove. A tagging run will never put it back.">×</button>
+                            </form>
+                          </span>
+                        ))}
+                      </div>
+                    ))}
+                    {user.role !== "viewer" && <AddTag itemId={m.id} slide={i + 1} terms={allTerms.filter((t) => !active.some((a) => a.termId === t.id))} action={toggle} />}
+                  </div>
 
-          {rejected.length > 0 && (
-            <div className="panel">
-              <h3>Rejected by a person</h3>
-              <p className="hint" style={{ marginTop: 0 }}>A tagging run can never reinstate these, however confident a newer model is (FR-19).</p>
-              {rejected.map((t) => (
-                <span className="tag" key={t.termId} style={{ opacity: 0.6 }}>
-                  <s>{t.label}</s>
-                  <form action={toggle} style={{ display: "inline" }}>
-                    <input type="hidden" name="itemId" value={id} />
-                    <input type="hidden" name="termId" value={t.termId} />
-                    <input type="hidden" name="action" value="add" />
-                    <button type="submit" title="Put it back">↩</button>
-                  </form>
-                </span>
-              ))}
-            </div>
-          )}
+                  {rejected.length > 0 && (
+                    <div className="panel">
+                      <h3>Removed by a person</h3>
+                      <p className="hint" style={{ marginTop: 0 }}>A tagging run can never put these back, however sure a newer model is.</p>
+                      {rejected.map((t) => (
+                        <span className="tag" key={t.termId} style={{ opacity: 0.6 }}>
+                          <s>{t.label}</s>
+                          <form action={toggle} style={{ display: "inline" }}>
+                            <input type="hidden" name="itemId" value={m.id} />
+                            <input type="hidden" name="slide" value={i + 1} />
+                            <input type="hidden" name="termId" value={t.termId} />
+                            <input type="hidden" name="action" value="add" />
+                            <button type="submit" title="Put it back">↩</button>
+                          </form>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </SlidePanel>
 
           <div className="panel">
             <h3>Provenance</h3>

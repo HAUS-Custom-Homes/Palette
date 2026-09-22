@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { requireUser } from "@/auth";
 import { taggerMode } from "@/ai/tagger";
+import { passedFacets, trustModel } from "@/ai/gates";
+import { config } from "@/config";
 import { redirect } from "next/navigation";
 import { createBoard, listBoards } from "@/boards/boards";
 import { Grid } from "./ui/grid";
@@ -94,6 +96,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
         [],
       ))?.n ?? 0)
     : 0;
+
+  // FR-18 as the owner sees it: until the model has passed a check on this
+  // library's own pictures, its tags are suggestions. The owner may decide to
+  // apply them anyway; the decision lives in the gate table (trustModel).
+  const trusted = mode === "claude" ? (await passedFacets(config.ai.model)).has("*") : true;
+
+  async function trustTagger() {
+    "use server";
+    const u = await requireUser();
+    if (u.role !== "owner") return;
+    await trustModel(config.ai.model, u.id);
+    revalidatePath("/");
+  }
 
   async function retagAll() {
     "use server";
@@ -213,6 +228,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
             <b>Smart tagging is on.</b> {roughlyTagged} {roughlyTagged === 1 ? "picture was" : "pictures were"} tagged
             before it was, by a rough stand-in. Tags people set are never touched.{" "}
             <button className="btn" type="submit">Re-tag them</button>
+          </form>
+        )}
+
+        {mode === "claude" && user.role === "owner" && !trusted && (
+          <form action={trustTagger} className="notice">
+            <b>Tags are shown as suggestions</b> until the model passes a check on your own pictures. Apply them straight
+            away instead; anything wrong can be removed on the picture, and a removal is permanent.{" "}
+            <button className="btn" type="submit">Apply tags automatically</button>
           </form>
         )}
 

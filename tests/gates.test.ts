@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
 import { applyTags, setHumanTag } from "@/ai/apply-tags";
+import { passedFacets, trustModel } from "@/ai/gates";
 import type { TagResult } from "@/ai/tag-schema";
 import { db } from "@/db/client";
 import { migrate } from "@/db/migrate";
@@ -61,4 +62,23 @@ describe("the eval gate", () => {
     expect(row!.suggested).toBe(false);
     expect((await search({ facets: { space: ["kitchen"] } })).total).toBe(2);
   });
+
+  it("the owner may apply a model's tags without the gate; suggestions it already made become applied, human rows stay", async () => {
+    const d = await db();
+    const third = (await ingestBuffer(await img(3), { userId: user.id, filename: "g3.jpg", source: { kind: "upload" } })).itemId;
+    await applyTags(third, ai({ space: [{ term: "kitchen", confidence: 0.9 }] }), "model-trusted");
+    expect((await d.one<{ suggested: boolean }>(`SELECT suggested FROM item_terms WHERE item_id = $1`, [third]))!.suggested).toBe(true);
+
+    const flipped = await trustModel("model-trusted", user.id);
+    expect(flipped).toBe(1);
+    expect((await d.one<{ suggested: boolean }>(`SELECT suggested FROM item_terms WHERE item_id = $1`, [third]))!.suggested).toBe(false);
+    expect((await passedFacets("model-trusted")).has("*")).toBe(true);
+    // The first picture's tag was made human earlier; untouched.
+    expect((await d.one<{ source: string }>(`SELECT source::text AS source FROM item_terms WHERE item_id = $1`, [itemId]))!.source).toBe("human");
+    // And the next run by that model applies straight away.
+    const fourth = (await ingestBuffer(await img(4), { userId: user.id, filename: "g4.jpg", source: { kind: "upload" } })).itemId;
+    await applyTags(fourth, ai({ space: [{ term: "kitchen", confidence: 0.7 }] }), "model-trusted");
+    expect((await d.one<{ suggested: boolean }>(`SELECT suggested FROM item_terms WHERE item_id = $1`, [fourth]))!.suggested).toBe(false);
+  });
 });
+
