@@ -1,7 +1,58 @@
 # Handoff
-Last updated: 2026-09-20 on Trevor_Lenovo
+Last updated: 2026-09-22 on Trevor_Lenovo
 
 ## Current state
+
+### NEXT SESSION: TikTok videos (Trevor, 2026-09-22: "NEXT TIME, I WANNA FOCUS ON TIKTOK VIDEOS")
+Start here. What exists: `src/ingest/tiktok.ts` reads the public page's `__UNIVERSAL_DATA_FOR_REHYDRATION__`,
+picks the best H.264 rendition and fetches it with the page's anonymous visitor cookie; one TikTok saved
+live in 6s with its video on 2026-09-20 (`tests/tiktok.test.ts`). Not known yet: what Trevor sees as
+wrong. First step: ask him for the links that failed, then read `/install/attempts` (owner-only record of
+every save request: what arrived, what was answered) and the Railway logs (`[ingest]` lines) for those
+saves before changing anything. Likely suspects: TikTok photo posts, links from the app's share sheet
+(`vm.tiktok.com` / `vt.tiktok.com` short links that redirect; `cleanUrl` and `isTikTokUrl` may not
+follow them), slideshow posts, and pages that now demand a verified cookie. A Playwright-free probe
+like the one used for Instagram (fetch the page, count `video`/`playAddr` fields) is the fast way to see
+what the public page still hands over.
+
+### Done 2026-09-21 and 2026-09-22 (all live on hauspalette.com)
+- **Smart tagging is on.** Trevor made an Anthropic key in a new `Palette` workspace (its own
+  $15/month cap; the whole account is capped at $20), `ANTHROPIC_API_KEY` and
+  `PALETTE_TAG_MODEL=claude-haiku-4-5` are in Railway. The first key (Default workspace) is disabled.
+  All 49 pictures were re-tagged by Haiku ("Re-tag them" button, owner-only, appears while stand-in
+  tags remain). The tagger uses `messages.create` + `lenient()` so a word outside the vocabulary
+  becomes a proposal instead of failing the picture (6 had failed that way). Taxonomy is re-read every
+  5 minutes by the long-lived worker.
+- **Tags apply automatically.** Trevor chose to skip the FR-18 eval gate: "Apply tags automatically"
+  (owner-only) wrote the `*` row in `facet_gates` via `trustModel()`; suggestions became applied
+  (Needs me went from 52 to 8, the rest are low-confidence flags). `tests/gates.test.ts` covers it.
+- **Tags are per picture.** The post page shows the tags of the slide on screen (`memberTags()`,
+  `SlidePanel`, the carousel emits `palette:slide` and keeps `?slide=n` in the address); × removes for
+  good, ↩ restores, "+ add a tag" is per picture. Forms carry the slide so the page comes back on it.
+- **Anyone can add a word to the vocabulary from a picture** (`src/taxonomy/terms.ts`,
+  `POST /api/taxonomy/terms`): typeahead over labels and synonyms plus the model's pending proposals;
+  create in a chosen facet; a near miss (plural, typo, recorded synonym, one more word) is asked
+  about first: Use it / Same thing (adds a synonym) / Different. "Foyer" is a seed synonym of Hall,
+  so creating it asks; Trevor answers Different if he wants Foyer as its own term. Not yet created live.
+- **Library header B**: one box in the top bar searches (Enter) and saves (paste a link); drop
+  pictures anywhere; chips All / hauses / Mine / New this week / From video; a post count and one
+  Filters panel (facet rows, colour, unsure tags). Card titles are the post's own caption again.
+- **Preview-size posts fixed.** Posts saved from pasted links before whole-post fetching held one
+  small cover. Now: "Get the full post" on the post's strip, and an owner-only "Fetch in full" notice
+  on the library (`previewOnlyPosts`, `fetchFullPost`, `upgradePreviews`, `foldPreviewCovers`). The
+  small copy folds into the full-size first picture (`supersede`; previews are square crops, so the
+  first picture of a post is matched without a hash test), old links redirect. The embed parser falls
+  back to the embed's own `<img class="EmbeddedMediaImage">` for old single-image posts that have no
+  JSON. All four of Trevor's preview posts are now 1080 to 1440 px wide.
+- **Instagram video.** Instagram no longer exposes most reels' files to anything but a signed-in
+  browser (embed, page and anonymous GraphQL all empty/403 for Trevor's reel). Three reels have their
+  files; six have covers only. Per R-1 the fix is the extension: on a reel it reads `video_versions`
+  from the page's own data (`videoFileFromScripts`), fetches file + cover in the worker and POSTs both
+  (`/api/ingest` accepts a `video` file with `video_width/height/seconds`). Popup: "Save the video".
+  Built to `extension/.output/chrome-mv3`; **not yet loaded or tried in Trevor's Chrome.**
+- **iPhone photos/screenshots** from the share card: still open (the File row would not hold
+  Shortcut Input). Links work.
+- `www.hauspalette.com` redirect rule in Cloudflare still needs Trevor to press Deploy.
 
 ### iPhone share sheet WORKS (2026-09-20, late)
 Trevor's iPhone saved a whole Instagram post from the share card ("Saved to Palette · 3 items",
