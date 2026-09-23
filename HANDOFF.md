@@ -1,5 +1,5 @@
 # Handoff
-Last updated: 2026-09-22 on Trevor_Lenovo
+Last updated: 2026-09-23 on Trevor_Lenovo
 
 ## Current state
 
@@ -50,8 +50,14 @@ what the public page still hands over.
   from the page's own data (`videoFileFromScripts`), fetches file + cover in the worker and POSTs both
   (`/api/ingest` accepts a `video` file with `video_width/height/seconds`). Popup: "Save the video".
   Built to `extension/.output/chrome-mv3`; **not yet loaded or tried in Trevor's Chrome.**
-- **iPhone photos/screenshots** from the share card: still open (the File row would not hold
-  Shortcut Input). Links work.
+- **iPhone share gets an interface (2026-09-23).** Trevor: "there isn't an interface on iOS, it just
+  uploads without any choices like on Android." The Shortcut is now two blocks and needs no key:
+  Receive URLs, Open URLs `https://hauspalette.com/save?u=<Shortcut Input>`. `/save` (a guarded page)
+  shows the link, haus chips, a lookbook, a note and one button, and POSTs to `/share` (which now
+  takes `haus`, `board`, `note`; `GET /share?url=` redirects to the sheet). Verified locally at phone
+  width. Trevor has to rebuild his Shortcut per `/install` (or add "Open URLs" and drop the API
+  blocks). The older key-based Shortcut still works. Photos/screenshots: the home-screen app, + Save.
+  The real parity fix remains a native iOS Share Extension ($99/yr Apple account, a Mac, about a week).
 - `www.hauspalette.com` redirect rule in Cloudflare still needs Trevor to press Deploy.
 
 ### iPhone share sheet WORKS (2026-09-20, late)
