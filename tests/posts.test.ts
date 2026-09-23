@@ -203,3 +203,36 @@ describe("an old database", () => {
     expect((await postFor(legacy.itemId))?.postId).toBe("pin:12345");
   });
 });
+
+describe("a post saved at preview size", () => {
+  it("is replaced by the full-size slide when the post arrives whole, keeping what a person did to it", async () => {
+    const d = await db();
+    const small = await img(41);
+    const big = await sharp(small).resize(680).jpeg().toBuffer();
+    const preview = await ingestBuffer(small, {
+      userId: user.id, filename: "preview.jpg",
+      source: { kind: "instagram", externalId: "ig:PREV", sourceUrl: "https://www.instagram.com/p/PREV/" },
+    });
+    await d.query(`UPDATE items SET note = 'love the arch' WHERE id = $1`, [preview.itemId]);
+
+    const slide1 = await ingestBuffer(big, {
+      userId: user.id, filename: "s1.jpg",
+      source: { kind: "instagram", postId: "ig:PREV", sourceUrl: "https://www.instagram.com/p/PREV/", slideIndex: 1, slideCount: 2 },
+    });
+    const slide2 = await ingestBuffer(await img(42), {
+      userId: user.id, filename: "s2.jpg",
+      source: { kind: "instagram", postId: "ig:PREV", sourceUrl: "https://www.instagram.com/p/PREV/", slideIndex: 2, slideCount: 2 },
+    });
+    expect(slide1.itemId).not.toBe(preview.itemId);
+
+    const old = await d.one<{ variant_of: string | null; group_id: string | null }>(`SELECT variant_of, group_id FROM items WHERE id = $1`, [preview.itemId]);
+    expect(old).toMatchObject({ variant_of: slide1.itemId, group_id: null });
+    const lead = await d.one<{ group_id: string; is_cover: boolean; note: string | null }>(`SELECT group_id, is_cover, note FROM items WHERE id = $1`, [slide1.itemId]);
+    expect(lead).toMatchObject({ group_id: slide1.itemId, is_cover: true, note: "love the arch" });
+    expect((await postMedia(slide1.itemId)).map((m) => m.id)).toEqual([slide1.itemId, slide2.itemId]);
+    // The library shows one post, at full size, and the small cover is gone from it.
+    const ids = (await search({ limit: 200 })).items.map((i) => i.id);
+    expect(ids).toContain(slide1.itemId);
+    expect(ids).not.toContain(preview.itemId);
+  });
+});

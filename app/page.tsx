@@ -9,7 +9,9 @@ import { Grid } from "./ui/grid";
 import { boot } from "@/lib/boot";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
-import { queueDepth, requeue } from "@/ingest/tag-worker";
+import { after } from "next/server";
+import { previewOnlyPosts, upgradePreviews } from "@/ingest/ingest";
+import { queueDepth, requeue, runTagQueue } from "@/ingest/tag-worker";
 import { facetCounts, search, stats, type SearchParams } from "@/search/query";
 import { FilterIcon } from "./ui/icons";
 import { Nav } from "./ui/nav";
@@ -108,6 +110,19 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
     if (u.role !== "owner") return;
     await trustModel(config.ai.model, u.id);
     revalidatePath("/");
+  }
+
+  // Posts saved from a pasted link before Palette could fetch whole posts:
+  // one preview-sized picture each. One button fetches them all, in the
+  // background, one after another (about half a minute per post).
+  const previews = user.role === "owner" ? await previewOnlyPosts() : [];
+
+  async function fetchPreviews() {
+    "use server";
+    const u = await requireUser();
+    if (u.role !== "owner") return;
+    after(() => upgradePreviews().then(() => runTagQueue(10)).catch((e) => console.warn(`[ingest] previews: ${(e as Error).message}`)));
+    redirect("/?upgrading=1");
   }
 
   async function retagAll() {
@@ -236,6 +251,20 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
             <b>Tags are shown as suggestions</b> until the model passes a check on your own pictures. Apply them straight
             away instead; anything wrong can be removed on the picture, and a removal is permanent.{" "}
             <button className="btn" type="submit">Apply tags automatically</button>
+          </form>
+        )}
+
+        {previews.length > 0 && (
+          <form action={fetchPreviews} className="notice">
+            {sp.upgrading ? (
+              <><b>Fetching {previews.length} {previews.length === 1 ? "post" : "posts"} in full.</b> About half a minute each. Reload to see them arrive.</>
+            ) : (
+              <>
+                <b>{previews.length} {previews.length === 1 ? "post was" : "posts were"} saved at preview size</b>, before Palette could fetch whole posts.
+                Fetch {previews.length === 1 ? "it" : "them"} again at full size, every picture, in the background.{" "}
+                <button className="btn" type="submit">Fetch in full</button>
+              </>
+            )}
           </form>
         )}
 

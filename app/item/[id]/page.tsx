@@ -6,6 +6,7 @@ import { requireUser } from "@/auth";
 import { addToBoard, boardsForItem, removeFromBoard } from "@/boards/boards";
 import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
+import { fetchFullPost } from "@/ingest/ingest";
 import { requeue, runTagQueue } from "@/ingest/tag-worker";
 import { getItem, memberTags, postFor, postMedia, similar } from "@/search/query";
 import { By, displayName, platformOf } from "../../ui/icons";
@@ -95,6 +96,26 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
     redirect(`/item/${lead?.lead ?? itemId}${slide > 1 ? `?slide=${slide}` : ""}`);
   }
 
+  // A post saved at preview size is fetched again, whole. The small cover
+  // folds into the full-size slide (attachSource), so the page lands on the
+  // same post with the same tags, lookbooks and notes.
+  async function fetchFull(formData: FormData) {
+    "use server";
+    const u = await requireUser();
+    if (u.role === "viewer") return;
+    const itemId = String(formData.get("itemId"));
+    let to = `/item/${itemId}?fetched=failed`;
+    try {
+      const r = await fetchFullPost(itemId);
+      to = `/item/${r.leadId}?fetched=${r.got}`;
+    } catch (e) {
+      console.warn(`[ingest] full post for ${itemId}: ${(e as Error).message}`);
+    }
+    revalidatePath("/");
+    revalidatePath(to.split("?")[0]!);
+    redirect(to);
+  }
+
   async function retry(formData: FormData) {
     "use server";
     await requireUser();
@@ -172,6 +193,12 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
         {sp.shared && <span className="pill">saved from your phone</span>}
       </div>
 
+      {sp.fetched && sp.fetched !== "failed" && (
+        <p className="notice" style={{ margin: "0 0 16px" }}>
+          <b>Fetched in full.</b> {sp.fetched === "1" ? "The picture is now at full size." : `${sp.fetched} pictures, at full size.`}
+        </p>
+      )}
+
       {/* A share from the phone skips the capture form, so the one question
           only a person can answer is asked here, once, and is skippable. */}
       {sp.shared && hausTags.length === 0 && user.role !== "viewer" && (
@@ -204,9 +231,16 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
           {post && !isVideo && !post.slideCount && post.siblings.length === 1 && post.sourceUrl && Number(item.width ?? 0) <= 700 && (post.kind === "instagram" || post.kind === "pinterest") && (
             <div className="strip">
               <span className="lead" style={{ whiteSpace: "normal" }}>
-                This is the post&apos;s cover, at the size {post.kind === "instagram" ? "Instagram" : "Pinterest"} publishes for previews.
-                For full size, or the other images in the post, open it and save with the Palette extension.
+                {sp.fetched === "failed"
+                  ? `${post.kind === "instagram" ? "Instagram" : "Pinterest"} would not give Palette this post just now. This is the preview-size cover. Try again later, or open the post and save with the Palette extension.`
+                  : `This is the post's cover, at the size ${post.kind === "instagram" ? "Instagram" : "Pinterest"} publishes for previews.`}
               </span>
+              {post.kind === "instagram" && user.role !== "viewer" && (
+                <form action={fetchFull}>
+                  <input type="hidden" name="itemId" value={id} />
+                  <button className="go" type="submit">Get the full post</button>
+                </form>
+              )}
               <a className="go" href={post.sourceUrl} target="_blank" rel="noreferrer">Open the post</a>
             </div>
           )}

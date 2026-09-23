@@ -1,7 +1,7 @@
 import path from "node:path";
 import { config } from "@/config";
 import { db } from "@/db/client";
-import { derive } from "@/derive/pipeline";
+import { derive, hammingDistance } from "@/derive/pipeline";
 import { reindexItem } from "@/search/index-item";
 import { nearDuplicates } from "@/search/query";
 import { originalKey, sha256, store } from "@/storage/object-store";
@@ -218,6 +218,29 @@ async function attachSource(itemId: string, s0: SourceInfo) {
       [s.kind, extId, itemId],
     );
     if (prior && (prior.new_w ?? 0) > (prior.old_w ?? 0)) await supersede(prior.item_id, itemId);
+  }
+
+  // A post first saved from a pasted link, back when a link could only reach
+  // the preview picture: one small cover with no slide number. When the post
+  // now arrives whole, the slide that is that picture takes the cover's place
+  // (tags, haus, lookbooks, notes and all); the other slides join as usual.
+  if (s.postId && s.slideIndex != null) {
+    const preview = await d.one<{ item_id: string; old_w: number | null; old_dhash: string | null; new_w: number | null; new_dhash: string | null }>(
+      `SELECT so.item_id, oa.width AS old_w, oa.dhash AS old_dhash, na.width AS new_w, na.dhash AS new_dhash
+         FROM sources so
+         JOIN items oi ON oi.id = so.item_id JOIN assets oa ON oa.id = oi.asset_id,
+              items ni JOIN assets na ON na.id = ni.asset_id
+        WHERE so.kind = $1 AND so.post_id = $2 AND so.slide_index IS NULL AND so.frame_time_s IS NULL
+          AND so.item_id <> $3 AND oi.deleted_at IS NULL AND oi.variant_of IS NULL AND ni.id = $3
+        LIMIT 1`,
+      [s.kind, s.postId, itemId],
+    );
+    if (preview && (preview.new_w ?? 0) >= (preview.old_w ?? 0)) {
+      const alike = preview.old_dhash && preview.new_dhash
+        ? hammingDistance(preview.old_dhash, preview.new_dhash) <= config.nearDuplicateDistance
+        : s.slideIndex === 1;
+      if (alike) await supersede(preview.item_id, itemId);
+    }
   }
   await d.query(
     `INSERT INTO sources (item_id, kind, source_url, external_id, author_handle, author_url,
@@ -587,4 +610,61 @@ async function ingestOne(
       kind: preview && preview.source.kind !== "web" ? preview.source.kind : (source.kind ?? preview?.source.kind ?? "web"),
     },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Posts saved at preview size (2026-09-22). Before whole-post fetching, a
+// pasted Instagram link saved one small picture. These find those posts and
+// fetch them again, whole; attachSource() folds the old cover into the new.
+
+export type PreviewOnly = { id: string; url: string; userId: string; title: string | null };
+
+/** Instagram posts in the library that are still one preview-sized picture. */
+export async function previewOnlyPosts(): Promise<PreviewOnly[]> {
+  const d = await db();
+  return d.query<PreviewOnly>(
+    `SELECT DISTINCT ON (i.id) i.id, s.source_url AS url, i.created_by AS "userId", i.title
+       FROM items i JOIN assets a ON a.id = i.asset_id JOIN sources s ON s.item_id = i.id
+      WHERE i.deleted_at IS NULL AND i.variant_of IS NULL AND COALESCE(i.group_id, i.id) = i.id
+        AND i.video_asset_id IS NULL AND a.width <= 700
+        AND s.kind = 'instagram' AND s.slide_index IS NULL AND s.slide_count IS NULL
+        AND s.media_kind = 'image' AND s.source_url IS NOT NULL
+        AND NOT EXISTS (SELECT 1 FROM items m WHERE m.group_id = i.id AND m.id <> i.id AND m.deleted_at IS NULL)
+      ORDER BY i.id, s.fetched_at`,
+  );
+}
+
+/** Fetch one post whole. Answers with the post's lead afterwards, which may be a new row. */
+export async function fetchFullPost(leadId: string): Promise<{ leadId: string; got: number }> {
+  const d = await db();
+  const row = await d.one<{ url: string | null; kind: string; userId: string }>(
+    `SELECT s.source_url AS url, s.kind::text AS kind, i.created_by AS "userId"
+       FROM items i JOIN sources s ON s.item_id = i.id
+      WHERE i.id = $1 AND s.source_url IS NOT NULL ORDER BY s.fetched_at LIMIT 1`,
+    [leadId],
+  );
+  if (!row?.url) throw new Error("this post has no link to fetch from");
+  const got = await ingestLink(row.url, row.userId, { kind: row.kind as SourceInfo["kind"] });
+  const lead = await d.one<{ lead: string }>(
+    `SELECT COALESCE(i.variant_of, i.group_id, i.id)::text AS lead FROM items i WHERE i.id = $1`,
+    [leadId],
+  );
+  return { leadId: lead?.lead ?? leadId, got: got.length };
+}
+
+/** Every preview-only post, fetched whole, one after another. Failures are noted and skipped. */
+export async function upgradePreviews(): Promise<{ tried: number; upgraded: number; failed: Array<{ id: string; why: string }> }> {
+  const posts = await previewOnlyPosts();
+  const out = { tried: posts.length, upgraded: 0, failed: [] as Array<{ id: string; why: string }> };
+  for (const p of posts) {
+    try {
+      const r = await fetchFullPost(p.id);
+      if (r.got > 0) out.upgraded++;
+      console.log(`[ingest] full post ${p.url}: ${r.got} pictures`);
+    } catch (e) {
+      out.failed.push({ id: p.id, why: (e as Error).message });
+      console.warn(`[ingest] full post ${p.url}: ${(e as Error).message}`);
+    }
+  }
+  return out;
 }

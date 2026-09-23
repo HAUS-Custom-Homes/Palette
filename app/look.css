@@ -368,3 +368,6 @@ section.panel h3 { font-size: 12.5px; }
 .addtag-opt[data-kind="proposal"] { color: var(--accent); }
 .addtag-new { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px; border-top: 1px solid var(--line); margin-top: 4px; font-size: 13px; }
 .addtag-near { margin-top: 8px; padding: 10px; border: 1px dashed var(--accent-dim); border-radius: 12px; }
+
+.strip form { display: contents; }
+.strip button.go { font: inherit; cursor: pointer; }
