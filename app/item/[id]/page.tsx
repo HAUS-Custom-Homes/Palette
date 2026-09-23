@@ -44,6 +44,10 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
 
   // REF-02: a picture inside a post is reached through the post. An old link
   // to one slide still works, and opens the post on that slide.
+  // A copy that a better one took the place of (a preview folded into the
+  // full-size picture): the old link goes to the one that stands for it now.
+  if (item.variant_of) redirect(`/item/${item.variant_of}`);
+
   if (item.group_id && item.group_id !== id) {
     const members = await postMedia(String(item.group_id));
     const at = members.findIndex((m) => m.id === id);
