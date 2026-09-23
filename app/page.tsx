@@ -10,7 +10,7 @@ import { boot } from "@/lib/boot";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
 import { after } from "next/server";
-import { previewOnlyPosts, upgradePreviews } from "@/ingest/ingest";
+import { postsNeedingFullFetch, upgradePreviews } from "@/ingest/ingest";
 import { queueDepth, requeue, runTagQueue } from "@/ingest/tag-worker";
 import { facetCounts, search, stats, type SearchParams } from "@/search/query";
 import { FilterIcon } from "./ui/icons";
@@ -115,7 +115,7 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
   // Posts saved from a pasted link before Palette could fetch whole posts:
   // one preview-sized picture each. One button fetches them all, in the
   // background, one after another (about half a minute per post).
-  const previews = user.role === "owner" ? await previewOnlyPosts() : [];
+  const previews = user.role === "owner" ? await postsNeedingFullFetch() : 0;
 
   async function fetchPreviews() {
     "use server";
@@ -254,14 +254,14 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
           </form>
         )}
 
-        {previews.length > 0 && (
+        {previews > 0 && (
           <form action={fetchPreviews} className="notice">
             {sp.upgrading ? (
-              <><b>Fetching {previews.length} {previews.length === 1 ? "post" : "posts"} in full.</b> About half a minute each. Reload to see them arrive.</>
+              <><b>Fetching {previews} {previews === 1 ? "post" : "posts"} in full.</b> About half a minute each. Reload to see them arrive.</>
             ) : (
               <>
-                <b>{previews.length} {previews.length === 1 ? "post was" : "posts were"} saved at preview size</b>, before Palette could fetch whole posts.
-                Fetch {previews.length === 1 ? "it" : "them"} again at full size, every picture, in the background.{" "}
+                <b>{previews} {previews === 1 ? "post is" : "posts are"} still at preview size</b>, from before Palette could fetch whole posts.
+                Fetch {previews === 1 ? "it" : "them"} again at full size, every picture, in the background.{" "}
                 <button className="btn" type="submit">Fetch in full</button>
               </>
             )}

@@ -239,9 +239,12 @@ async function attachSource(itemId: string, s0: SourceInfo) {
       [s.kind, s.postId, itemId, extId],
     );
     if (preview && (preview.new_w ?? 0) > (preview.old_w ?? 0)) {
-      const alike = preview.old_dhash && preview.new_dhash
-        ? hammingDistance(preview.old_dhash, preview.new_dhash) <= config.nearDuplicateDistance
-        : (s.slideIndex ?? 1) === 1;
+      // A preview is always the post's first picture, and Instagram crops it
+      // square, so the hashes of the two copies do not agree. The post's only
+      // picture, or its first, is that picture; any other slide must look alike.
+      const first = s.slideCount == null || s.slideIndex === 1;
+      const alike = first || (!!preview.old_dhash && !!preview.new_dhash
+        && hammingDistance(preview.old_dhash, preview.new_dhash) <= config.nearDuplicateDistance);
       if (alike) await supersede(preview.item_id, itemId);
     }
   }
@@ -664,8 +667,51 @@ export async function fetchFullPost(leadId: string): Promise<{ leadId: string; g
   return { leadId: after.lead, got: better ? after.members : 0 };
 }
 
+/**
+ * A preview copy that ended up as a slide beside the full-size picture of the
+ * same post (the first fetches, before the rule above knew previews are
+ * cropped square). Folded the same way: the full copy takes the preview's place.
+ */
+export async function foldPreviewCovers(): Promise<number> {
+  const d = await db();
+  const pairs = await d.query<{ small_id: string; big_id: string }>(
+    `SELECT DISTINCT ON (small.id) small.id AS small_id, big.id AS big_id
+       FROM sources ss JOIN items small ON small.id = ss.item_id JOIN assets sa ON sa.id = small.asset_id
+       JOIN sources bs ON bs.kind = ss.kind AND bs.post_id = ss.post_id AND bs.item_id <> ss.item_id
+       JOIN items big ON big.id = bs.item_id JOIN assets ba ON ba.id = big.asset_id
+      WHERE ss.kind = 'instagram' AND ss.slide_count IS NULL AND COALESCE(ss.slide_index, 1) = 1
+        AND COALESCE(ss.media_kind, 'image') = 'image' AND COALESCE(bs.media_kind, 'image') = 'image'
+        AND COALESCE(bs.slide_index, 1) = 1 AND bs.frame_time_s IS NULL
+        AND small.deleted_at IS NULL AND small.variant_of IS NULL AND big.deleted_at IS NULL AND big.variant_of IS NULL
+        AND ba.width > sa.width
+        AND COALESCE(small.group_id, small.id) = COALESCE(big.group_id, big.id)
+      ORDER BY small.id, ba.width DESC`,
+  );
+  for (const p of pairs) await supersede(p.small_id, p.big_id);
+  for (const p of pairs) await reindexItem(p.big_id);
+  return pairs.length;
+}
+
+/** Posts that still need the fetch, plus posts carrying a preview beside the full copy. For the owner's notice. */
+export async function postsNeedingFullFetch(): Promise<number> {
+  const d = await db();
+  const doubles = await d.one<{ n: string }>(
+    `SELECT count(DISTINCT small.id)::text AS n
+       FROM sources ss JOIN items small ON small.id = ss.item_id JOIN assets sa ON sa.id = small.asset_id
+       JOIN sources bs ON bs.kind = ss.kind AND bs.post_id = ss.post_id AND bs.item_id <> ss.item_id
+       JOIN items big ON big.id = bs.item_id JOIN assets ba ON ba.id = big.asset_id
+      WHERE ss.kind = 'instagram' AND ss.slide_count IS NULL AND COALESCE(ss.slide_index, 1) = 1
+        AND COALESCE(bs.slide_index, 1) = 1 AND bs.frame_time_s IS NULL
+        AND small.deleted_at IS NULL AND small.variant_of IS NULL AND big.deleted_at IS NULL AND big.variant_of IS NULL
+        AND ba.width > sa.width AND COALESCE(small.group_id, small.id) = COALESCE(big.group_id, big.id)`,
+  );
+  return (await previewOnlyPosts()).length + Number(doubles?.n ?? 0);
+}
+
 /** Every preview-only post, fetched whole, one after another. Failures are noted and skipped. */
 export async function upgradePreviews(): Promise<{ tried: number; upgraded: number; failed: Array<{ id: string; why: string }> }> {
+  const folded = await foldPreviewCovers();
+  if (folded) console.log(`[ingest] folded ${folded} preview copies into their full-size pictures`);
   const posts = await previewOnlyPosts();
   const out = { tried: posts.length, upgraded: 0, failed: [] as Array<{ id: string; why: string }> };
   for (const p of posts) {
@@ -678,5 +724,6 @@ export async function upgradePreviews(): Promise<{ tried: number; upgraded: numb
       console.warn(`[ingest] full post ${p.url}: ${(e as Error).message}`);
     }
   }
+  await foldPreviewCovers();
   return out;
 }

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
 import { db } from "@/db/client";
 import { migrate } from "@/db/migrate";
-import { ingestBuffer, previewOnlyPosts, slideExternalId } from "@/ingest/ingest";
+import { foldPreviewCovers, ingestBuffer, previewOnlyPosts, slideExternalId } from "@/ingest/ingest";
 import { upsertUser } from "@/lib/users";
 import { postFor, postMedia, search } from "@/search/query";
 
@@ -262,5 +262,31 @@ describe("posts still at preview size", () => {
     expect((await d.one<{ variant_of: string | null }>(`SELECT variant_of FROM items WHERE id = $1`, [preview.itemId]))!.variant_of).toBe(full.itemId);
     expect((await postMedia(full.itemId)).map((m) => m.id)).toEqual([full.itemId]);
     expect((await previewOnlyPosts()).map((p) => p.id)).not.toContain(full.itemId);
+  });
+});
+
+describe("a preview copy that got in beside the full picture", () => {
+  it("is folded into it by the repair, which also hands over the lead and the cover", async () => {
+    const d = await db();
+    const small = await img(45);
+    const preview = await ingestBuffer(small, {
+      userId: user.id, filename: "og.jpg",
+      source: { kind: "instagram", postId: "ig:DOUBLE", slideIndex: 1, sourceUrl: "https://www.instagram.com/p/DOUBLE/" },
+    });
+    // Saved as its own post first, then wired in beside the preview: the state the first fetches left behind.
+    const full = await ingestBuffer(await sharp(small).resize(1080).jpeg().toBuffer(), {
+      userId: user.id, filename: "full.jpg",
+      source: { kind: "instagram", postId: "ig:ELSEWHERE", sourceUrl: "https://www.instagram.com/p/ELSEWHERE/" },
+    });
+    await d.query(`UPDATE sources SET post_id = 'ig:DOUBLE', external_id = 'ig:DOUBLE' WHERE item_id = $1`, [full.itemId]);
+    await d.query(`UPDATE items SET group_id = $2, group_pos = 1, is_cover = false WHERE id = $1`, [full.itemId, preview.itemId]);
+    expect((await postMedia(preview.itemId)).map((m) => m.id)).toEqual([preview.itemId, full.itemId]);
+
+    expect(await foldPreviewCovers()).toBe(1);
+    expect((await d.one<{ variant_of: string | null }>(`SELECT variant_of FROM items WHERE id = $1`, [preview.itemId]))!.variant_of).toBe(full.itemId);
+    const lead = await d.one<{ group_id: string; is_cover: boolean }>(`SELECT group_id, is_cover FROM items WHERE id = $1`, [full.itemId]);
+    expect(lead).toMatchObject({ group_id: full.itemId, is_cover: true });
+    expect((await postMedia(full.itemId)).map((m) => m.id)).toEqual([full.itemId]);
+    expect(await foldPreviewCovers()).toBe(0);
   });
 });
