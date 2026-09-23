@@ -27,8 +27,8 @@ export type PostShape = {
   carousel: boolean;
   slideIndex?: number;
   slideCount?: number;
-  /** A video is on screen. */
-  video?: { timeS: number; paused: boolean; poster?: string; rect: Rect };
+  /** A video is on screen. `file` is the video itself, when the page's own data names it. */
+  video?: { timeS: number; paused: boolean; poster?: string; rect: Rect; durationS?: number; file?: VideoFile };
 };
 
 export type Rect = { x: number; y: number; width: number; height: number };
@@ -177,4 +177,42 @@ export function filenameFor(src: string, fallback = "clip.jpg"): string {
   } catch {
     return fallback;
   }
+}
+
+export type VideoFile = { url: string; width?: number; height?: number };
+
+/**
+ * Instagram's page, in a signed-in browser, carries the reel's file addresses
+ * in its data ("video_versions"). The public embed does not, for most reels,
+ * which is why the server cannot fetch them and the extension can (R-1: the
+ * person's own browser). The largest rendition wins.
+ */
+export function videoFileFromScripts(texts: string[]): VideoFile | null {
+  let best: VideoFile | null = null;
+  for (const t of texts) {
+    let from = 0;
+    for (;;) {
+      const at = t.indexOf('"video_versions":[', from);
+      if (at < 0) break;
+      const start = at + '"video_versions":'.length;
+      let depth = 0, end = -1;
+      for (let i = start; i < t.length && i < start + 200_000; i++) {
+        const ch = t[i];
+        if (ch === "[") depth++;
+        else if (ch === "]" && --depth === 0) { end = i + 1; break; }
+      }
+      if (end < 0) break;
+      from = end;
+      let arr: Array<{ url?: string; width?: number; height?: number }> = [];
+      try { arr = JSON.parse(t.slice(start, end)); } catch {
+        arr = [...t.slice(start, end).matchAll(/"url":"([^"]+)"/g)].map((m) => ({ url: m[1] }));
+      }
+      for (const v of arr) {
+        const url = (v.url ?? "").replace(/\\u0026/g, "&").replace(/\\\//g, "/").replace(/&amp;/g, "&");
+        if (!/^https:\/\//.test(url)) continue;
+        if (!best || (v.width ?? 0) > (best.width ?? 0)) best = { url, width: v.width, height: v.height };
+      }
+    }
+  }
+  return best;
 }

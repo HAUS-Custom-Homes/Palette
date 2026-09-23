@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import sharp from "sharp";
 import { db } from "@/db/client";
 import { migrate } from "@/db/migrate";
-import { ingestBuffer, slideExternalId } from "@/ingest/ingest";
+import { ingestBuffer, previewOnlyPosts, slideExternalId } from "@/ingest/ingest";
 import { upsertUser } from "@/lib/users";
 import { postFor, postMedia, search } from "@/search/query";
 
@@ -234,5 +234,33 @@ describe("a post saved at preview size", () => {
     const ids = (await search({ limit: 200 })).items.map((i) => i.id);
     expect(ids).toContain(slide1.itemId);
     expect(ids).not.toContain(preview.itemId);
+  });
+});
+
+describe("posts still at preview size", () => {
+  it("are listed for the owner's one-button fetch, as the link path saved them (slide 1 of nothing)", async () => {
+    const small = await ingestBuffer(await img(43), {
+      userId: user.id, filename: "og.jpg",
+      source: { kind: "instagram", postId: "ig:OGONLY", slideIndex: 1, sourceUrl: "https://www.instagram.com/p/OGONLY/" },
+    });
+    const ids = (await previewOnlyPosts()).map((p) => p.id);
+    expect(ids).toContain(small.itemId);
+  });
+
+  it("a single-picture post arriving whole replaces its preview rather than sitting beside it", async () => {
+    const d = await db();
+    const small = await img(44);
+    const preview = await ingestBuffer(small, {
+      userId: user.id, filename: "og.jpg",
+      source: { kind: "instagram", postId: "ig:ONEPIC", slideIndex: 1, sourceUrl: "https://www.instagram.com/p/ONEPIC/" },
+    });
+    const full = await ingestBuffer(await sharp(small).resize(1080).jpeg().toBuffer(), {
+      userId: user.id, filename: "full.jpg",
+      source: { kind: "instagram", postId: "ig:ONEPIC", sourceUrl: "https://www.instagram.com/p/ONEPIC/" },
+    });
+    expect(full.itemId).not.toBe(preview.itemId);
+    expect((await d.one<{ variant_of: string | null }>(`SELECT variant_of FROM items WHERE id = $1`, [preview.itemId]))!.variant_of).toBe(full.itemId);
+    expect((await postMedia(full.itemId)).map((m) => m.id)).toEqual([full.itemId]);
+    expect((await previewOnlyPosts()).map((p) => p.id)).not.toContain(full.itemId);
   });
 });

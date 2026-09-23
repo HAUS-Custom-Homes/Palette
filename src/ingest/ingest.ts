@@ -224,21 +224,24 @@ async function attachSource(itemId: string, s0: SourceInfo) {
   // the preview picture: one small cover with no slide number. When the post
   // now arrives whole, the slide that is that picture takes the cover's place
   // (tags, haus, lookbooks, notes and all); the other slides join as usual.
-  if (s.postId && s.slideIndex != null) {
+  // A preview never knows the slide count (the link path calls it slide 1 of
+  // nothing); a real slide from the embed does, or is the post's only picture.
+  if (s.postId && extId) {
     const preview = await d.one<{ item_id: string; old_w: number | null; old_dhash: string | null; new_w: number | null; new_dhash: string | null }>(
       `SELECT so.item_id, oa.width AS old_w, oa.dhash AS old_dhash, na.width AS new_w, na.dhash AS new_dhash
          FROM sources so
          JOIN items oi ON oi.id = so.item_id JOIN assets oa ON oa.id = oi.asset_id,
               items ni JOIN assets na ON na.id = ni.asset_id
-        WHERE so.kind = $1 AND so.post_id = $2 AND so.slide_index IS NULL AND so.frame_time_s IS NULL
+        WHERE so.kind = $1 AND so.post_id = $2 AND so.external_id <> $4
+          AND so.slide_count IS NULL AND so.frame_time_s IS NULL AND COALESCE(so.media_kind, 'image') = 'image'
           AND so.item_id <> $3 AND oi.deleted_at IS NULL AND oi.variant_of IS NULL AND ni.id = $3
         LIMIT 1`,
-      [s.kind, s.postId, itemId],
+      [s.kind, s.postId, itemId, extId],
     );
-    if (preview && (preview.new_w ?? 0) >= (preview.old_w ?? 0)) {
+    if (preview && (preview.new_w ?? 0) > (preview.old_w ?? 0)) {
       const alike = preview.old_dhash && preview.new_dhash
         ? hammingDistance(preview.old_dhash, preview.new_dhash) <= config.nearDuplicateDistance
-        : s.slideIndex === 1;
+        : (s.slideIndex ?? 1) === 1;
       if (alike) await supersede(preview.item_id, itemId);
     }
   }
@@ -627,8 +630,8 @@ export async function previewOnlyPosts(): Promise<PreviewOnly[]> {
        FROM items i JOIN assets a ON a.id = i.asset_id JOIN sources s ON s.item_id = i.id
       WHERE i.deleted_at IS NULL AND i.variant_of IS NULL AND COALESCE(i.group_id, i.id) = i.id
         AND i.video_asset_id IS NULL AND a.width <= 700
-        AND s.kind = 'instagram' AND s.slide_index IS NULL AND s.slide_count IS NULL
-        AND s.media_kind = 'image' AND s.source_url IS NOT NULL
+        AND s.kind = 'instagram' AND s.slide_count IS NULL AND COALESCE(s.slide_index, 1) = 1
+        AND COALESCE(s.media_kind, 'image') = 'image' AND s.source_url IS NOT NULL
         AND NOT EXISTS (SELECT 1 FROM items m WHERE m.group_id = i.id AND m.id <> i.id AND m.deleted_at IS NULL)
       ORDER BY i.id, s.fetched_at`,
   );
@@ -644,12 +647,21 @@ export async function fetchFullPost(leadId: string): Promise<{ leadId: string; g
     [leadId],
   );
   if (!row?.url) throw new Error("this post has no link to fetch from");
-  const got = await ingestLink(row.url, row.userId, { kind: row.kind as SourceInfo["kind"] });
-  const lead = await d.one<{ lead: string }>(
-    `SELECT COALESCE(i.variant_of, i.group_id, i.id)::text AS lead FROM items i WHERE i.id = $1`,
-    [leadId],
+  // Honest accounting: "got" is how many pictures the post has afterwards, and
+  // only when something actually improved. Instagram gives nothing for some
+  // posts, and then the answer is zero, not "fetched".
+  const measure = async (id: string) => d.one<{ lead: string; width: number; members: number }>(
+    `SELECT l.id::text AS lead, a.width, (SELECT count(*)::int FROM items m WHERE (m.id = l.id OR m.group_id = l.id) AND m.deleted_at IS NULL AND m.variant_of IS NULL) AS members
+       FROM items i JOIN items l ON l.id = COALESCE(i.variant_of, i.group_id, i.id) JOIN assets a ON a.id = l.asset_id
+      WHERE i.id = $1`,
+    [id],
   );
-  return { leadId: lead?.lead ?? leadId, got: got.length };
+  const before = await measure(leadId);
+  await ingestLink(row.url, row.userId, { kind: row.kind as SourceInfo["kind"] });
+  const after = await measure(leadId);
+  if (!after) return { leadId, got: 0 };
+  const better = !before || after.lead !== before.lead || after.members > before.members || after.width > before.width;
+  return { leadId: after.lead, got: better ? after.members : 0 };
 }
 
 /** Every preview-only post, fetched whole, one after another. Failures are noted and skipped. */

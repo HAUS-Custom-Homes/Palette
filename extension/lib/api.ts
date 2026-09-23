@@ -119,3 +119,22 @@ async function send(s: { host: string; token: string }, fd: FormData): Promise<S
   }
   return { ok: true, saved: json.saved ?? 0, duplicates: json.duplicates ?? 0, variants: json.variants ?? 0, itemId: json.itemId ?? null };
 }
+
+/** The cover and the video file together, as one post. The server keeps both. */
+export async function saveVideo(
+  poster: Blob,
+  video: Blob,
+  meta: { width?: number; height?: number; seconds?: number },
+  page: Pick<PageInfo, "url" | "title" | "site" | "author" | "caption" | "board" | "externalId">,
+  opts: { haus?: string; note?: string } = {},
+): Promise<SaveResult> {
+  const s = await auth();
+  const fd = provenance({ mediaKind: "video_cover" }, page, opts);
+  const id = (page.externalId ?? "video").replace(/[^A-Za-z0-9_-]+/g, "-");
+  fd.append("files", poster, `${id}-cover.jpg`);
+  fd.append("video", video, `${id}.${video.type === "video/webm" ? "webm" : "mp4"}`);
+  if (meta.width) fd.append("video_width", String(meta.width));
+  if (meta.height) fd.append("video_height", String(meta.height));
+  if (meta.seconds) fd.append("video_seconds", meta.seconds.toFixed(1));
+  return send(s, fd);
+}

@@ -136,14 +136,29 @@ function setupVideo(tabId: number, best: Candidate | null) {
   const video = page!.post!.video!;
   $("post").hidden = false;
   $("save-best").hidden = true;
-  $("post-kind").textContent = `Video post, ${video.paused ? "paused" : "playing"} at ${clock(video.timeS)}. Palette keeps a still, not the video.`;
+  $("post-kind").textContent = video.file
+    ? `Video post${video.durationS ? `, ${clock(video.durationS)}` : ""}. Palette keeps the video itself, with its cover.`
+    : `Video post, ${video.paused ? "paused" : "playing"} at ${clock(video.timeS)}. This page does not name the file, so Palette keeps a still.`;
 
   const cover: Candidate | null = video.poster
     ? { src: video.poster, width: 1080, height: 1080, mediaKind: "video_cover" }
     : best ? { ...best, mediaKind: "video_cover" } : null;
-  $("post-a").textContent = "Save cover";
-  $<HTMLButtonElement>("post-a").disabled = !cover;
-  $("post-a").onclick = () => cover && saveOne(cover);
+  if (video.file) {
+    $("post-a").textContent = "Save the video";
+    $("post-a").onclick = async () => {
+      $<HTMLButtonElement>("post-a").disabled = true;
+      say("fetching the video...");
+      const r = (await browser.runtime.sendMessage({ type: "save-video", page, haus: $<HTMLSelectElement>("haus").value || undefined })) as
+        | { ok: true; duplicates: number }
+        | { ok: false; error: string };
+      if (r.ok) say(r.duplicates ? "That video is already in the library." : "Video saved, with its cover. Tagging queued.", "ok");
+      else { say(r.error, "err"); $<HTMLButtonElement>("post-a").disabled = false; }
+    };
+  } else {
+    $("post-a").textContent = "Save cover";
+    $<HTMLButtonElement>("post-a").disabled = !cover;
+    $("post-a").onclick = () => cover && saveOne(cover);
+  }
 
   $("post-b").textContent = "Save this frame";
   $("post-b").onclick = async () => {

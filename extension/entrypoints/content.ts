@@ -1,5 +1,5 @@
 import type { Candidate, PageInfo, PostShape, Rect } from "../lib/resolve";
-import { dedupeByPost, externalIdFor, isCollectionPage, largestFromSrcset, oddOneOut, plausible, siteFor } from "../lib/resolve";
+import { dedupeByPost, externalIdFor, isCollectionPage, largestFromSrcset, oddOneOut, plausible, siteFor, videoFileFromScripts } from "../lib/resolve";
 
 /**
  * Reads the page the person has open. Nothing here talks to the network; it
@@ -191,7 +191,12 @@ function postShape(): PostShape {
     slideIndex: dots.index ?? (carousel && !root.querySelector(BACK) ? 1 : undefined),
     slideCount: dots.count,
     video: v && r && r.width > 100
-      ? { timeS: v.currentTime, paused: v.paused, poster: v.poster || undefined, rect: { x: r.x, y: r.y, width: r.width, height: r.height } }
+      ? {
+          timeS: v.currentTime, paused: v.paused, poster: v.poster || undefined,
+          rect: { x: r.x, y: r.y, width: r.width, height: r.height },
+          durationS: Number.isFinite(v.duration) && v.duration > 0 ? v.duration : undefined,
+          file: videoFileFromScripts([...document.scripts].map((sc) => sc.textContent ?? "")) ?? undefined,
+        }
       : undefined,
   };
 }

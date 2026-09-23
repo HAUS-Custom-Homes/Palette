@@ -100,3 +100,15 @@ describe("reading a page's preview", () => {
     expect(previewFromHtml("<html><head><title>x</title></head></html>", "https://example.com/")).toBeNull();
   });
 });
+
+describe("an old single-image post's embed", () => {
+  it("yields its one full-size picture from the image tag when there is no JSON", () => {
+    const html = `<html><body><div class="Embed"><img class="EmbeddedMediaImage" alt="Instagram post shared by &#064;someone"
+      src="https://scontent.cdninstagram.com/v/t51.2885-15/full.jpg?stp=dst-jpg&amp;_nc_cat=1" srcset="https://scontent.cdninstagram.com/v/s640x640/x.jpg 640w" /></div>
+      <script>window.__additionalDataLoaded('extra', {\\"contextJSON\\":\\"{}\\"});</script></body></html>`;
+    const { slides } = slidesFromEmbed(html);
+    expect(slides).toHaveLength(1);
+    expect(slides[0]!.url).toBe("https://scontent.cdninstagram.com/v/t51.2885-15/full.jpg?stp=dst-jpg&_nc_cat=1");
+    expect(slides[0]!.isVideo).toBe(false);
+  });
+});

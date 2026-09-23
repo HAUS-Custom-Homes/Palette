@@ -1,4 +1,4 @@
-import { saveBlob, saveCandidate, type SaveResult } from "../lib/api";
+import { saveBlob, saveCandidate, saveVideo, type SaveResult } from "../lib/api";
 import type { Candidate, PageInfo, Rect } from "../lib/resolve";
 import { cropFor, pickBest, siteFor } from "../lib/resolve";
 
@@ -47,6 +47,8 @@ export default defineBackground(() => {
         sendResponse(summary);
       } else if (msg.type === "save-frame") {
         sendResponse(await saveFrame(msg.tabId, msg.page, msg.haus));
+      } else if (msg.type === "save-video") {
+        sendResponse(await saveWholeVideo(msg.page, msg.haus));
       }
     })().catch((err) => sendResponse({ ok: false, error: (err as Error).message }));
     return true;
@@ -56,7 +58,27 @@ export default defineBackground(() => {
 type Message =
   | { type: "save"; candidate: Candidate; page: PageInfo; haus?: string; note?: string }
   | { type: "save-many"; candidates: Candidate[]; page: PageInfo; haus?: string }
-  | { type: "save-frame"; tabId: number; page: PageInfo; haus?: string };
+  | { type: "save-frame"; tabId: number; page: PageInfo; haus?: string }
+  | { type: "save-video"; page: PageInfo; haus?: string };
+
+/**
+ * The video itself. The page named its file (see videoFileFromScripts); the
+ * worker fetches it and the cover with the person's own browser and sends
+ * both to Palette as one post. Bounded at what the server accepts.
+ */
+async function saveWholeVideo(page: PageInfo, haus?: string): Promise<SaveResult> {
+  const v = page.post?.video;
+  if (!v?.file) return { ok: false, error: "This page does not name the video file. Save the cover or a frame instead." };
+  const posterUrl = v.poster ?? pickBest(page.candidates, page.ogImage)?.src;
+  if (!posterUrl) return { ok: false, error: "No cover picture for this video." };
+  const [poster, video] = await Promise.all([
+    fetch(posterUrl).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`cover ${r.status}`)))),
+    fetch(v.file.url).then((r) => (r.ok ? r.blob() : Promise.reject(new Error(`video ${r.status}`)))),
+  ]);
+  if (video.size > 200 * 1024 * 1024) return { ok: false, error: "That video is over 200 MB, more than Palette keeps." };
+  const typed = video.type.startsWith("video/") ? video : new Blob([video], { type: "video/mp4" });
+  return saveVideo(poster, typed, { width: v.file.width, height: v.file.height, seconds: v.durationS }, page, { haus });
+}
 
 /**
  * The frame on screen, as the person sees it. A page may not read pixels out

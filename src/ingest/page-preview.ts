@@ -127,6 +127,16 @@ export function slidesFromEmbed(html: string): { slides: EmbedSlide[]; author?: 
     // A single-image post has exactly one; do not wander into "more posts".
     if (at < 0) break;
   }
+  // Older single-image posts have no JSON at all: the embed's own <img> carries
+  // the picture, and its plain src is the full-size file (2026-09-22).
+  if (!slides.length) {
+    const tag = /<img[^>]*class="EmbeddedMediaImage"[^>]*>/.exec(html)?.[0] ?? "";
+    const src = /\ssrc="([^"]+)"/.exec(tag)?.[1]?.replace(/&amp;/g, "&");
+    if (src && /^https:\/\//.test(src)) {
+      slides.push({ url: src, isVideo: /\\"is_video\\":true/.test(html) });
+      starts.push(0);
+    }
+  }
   // A node's video fields follow its display_url, before the next node begins.
   slides.forEach((s, i) => {
     const seg = scope.slice(starts[i]!, starts[i + 1] ?? starts[i]! + 80_000);

@@ -182,12 +182,12 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   const shared = [...named, ...loose, fileText].join(" ");
   const url = shared.match(/https?:\/\/[^\s"'<>]+/)?.[0] ?? "";
   const note = String(form.get("note") ?? "").trim() || undefined;
+  const field = (k: string) => String(form.get(k) ?? "").trim() || undefined;
   // "hurst" from a dropdown or the extension, or an id from inside the app.
   const haus = await resolveOpenTermIds("project", form.getAll("haus").map(String));
 
   // Provenance, sent by the browser extension (FR-4). A clip that arrives
   // without it is treated as a plain upload.
-  const field = (k: string) => String(form.get(k) ?? "").trim() || undefined;
   const KINDS = new Set(["instagram", "pinterest", "web", "upload", "email", "watch_folder", "api", "share"]);
   const kindField = field("source_kind");
   const provenance = {
@@ -213,13 +213,24 @@ async function handle(req: NextRequest): Promise<NextResponse> {
   let lastItemId: string | null = null;
   const errors: string[] = [];
 
-  for (const file of files) {
+  // The browser extension, on a reel in a signed-in browser, can fetch the
+  // video file itself (REF-01 R-1: the person's own browser, never a server
+  // with credentials). It arrives beside the cover picture, and is kept the
+  // way a link-fetched video is: immutable, under its own hash.
+  const videoField = form.get("video");
+  const videoFile = videoField instanceof File && videoField.size > 0 && videoField.size < 200 * 1024 * 1024 && /^video\//.test(videoField.type) ? videoField : null;
+  const video = videoFile
+    ? { buffer: Buffer.from(await videoFile.arrayBuffer()), mime: videoFile.type, width: intField(field("video_width"), 1, 8000), height: intField(field("video_height"), 1, 8000), durationS: numField(field("video_seconds")) }
+    : undefined;
+
+  for (const [fi, file] of files.entries()) {
     try {
       const buf = Buffer.from(await file.arrayBuffer());
       const res = await ingestBuffer(buf, {
         userId: user.id,
         filename: file.name,
         mime: file.type || undefined,
+        video: fi === 0 ? video : undefined,
         title: provenance.pageTitle ?? file.name.replace(/\.[^.]+$/, "").replace(/[-_]+/g, " "),
         note,
         termIds: haus,

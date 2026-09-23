@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { cropFor, dedupeByPost, externalIdFor, filenameFor, isCollectionPage, largestFromSrcset, oddOneOut, pickBest, plausible, siteFor } from "../lib/resolve";
+import { cropFor, dedupeByPost, externalIdFor, filenameFor, isCollectionPage, largestFromSrcset, oddOneOut, pickBest, plausible, siteFor, videoFileFromScripts } from "../lib/resolve";
 
 describe("site detection", () => {
   it("recognises the two platforms and everything else", () => {
@@ -89,5 +89,16 @@ describe("cropping a tab screenshot to the video", () => {
   it("clamps to the screenshot and refuses a sliver", () => {
     expect(cropFor({ x: -20, y: 10, width: 400, height: 900 }, 1, 800, 600)).toEqual({ x: 0, y: 10, width: 380, height: 590 });
     expect(cropFor({ x: 700, y: 10, width: 400, height: 400 }, 1, 800, 600)).toBeNull();
+  });
+});
+
+describe("the video file in a reel page's data", () => {
+  it("is the largest rendition, with its addresses unescaped", () => {
+    const script = `{"items":[{"code":"ABC","video_versions":[{"width":640,"height":1136,"url":"https:\\/\\/scontent.cdninstagram.com\\/v\\/small.mp4?efg=1\\u0026_nc_ht=x"},{"width":1080,"height":1920,"url":"https:\\/\\/scontent.cdninstagram.com\\/v\\/big.mp4?efg=1\\u0026_nc_ht=x"}],"is_video":true}]}`;
+    const v = videoFileFromScripts(["nothing here", script]);
+    expect(v).toEqual({ url: "https://scontent.cdninstagram.com/v/big.mp4?efg=1&_nc_ht=x", width: 1080, height: 1920 });
+  });
+  it("is null when the page names no file", () => {
+    expect(videoFileFromScripts(['{"is_video":true,"display_url":"https://x/y.jpg"}'])).toBeNull();
   });
 });
