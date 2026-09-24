@@ -382,3 +382,71 @@ section.panel h3 { font-size: 12.5px; }
 .haus-chips .chip:has(input:checked) { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 500; }
 .savesheet-actions { display: flex; gap: 10px; align-items: center; margin-top: 18px; }
 .savesheet-actions .btn.solid.big { padding: 13px 22px; font-size: 15px; }
+
+/* =====================================================================
+   Phones (2026-09-24). Trevor on an iPhone: the header sat under the clock,
+   did not stay put, and fields zoomed the page when tapped.
+   ===================================================================== */
+/* The app draws edge to edge (viewport-fit=cover, black-translucent status
+   bar), so the header reserves the notch itself, and stays at the top. */
+.nav {
+  position: -webkit-sticky; position: sticky; top: 0;
+  padding-top: env(safe-area-inset-top);
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+  height: calc(64px + env(safe-area-inset-top));
+}
+/* A rubber-band pull at the top no longer drags the header down with it. */
+html, body { overscroll-behavior-y: none; }
+/* No double-tap zoom anywhere; taps are taps. */
+html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+/* A picture never runs under the address bar: small-viewport units. */
+.slide, .detail .slide img, .slide video { max-height: 82vh; max-height: 78svh; }
+.stage[data-zoom="true"] .slide, .stage[data-zoom="true"] .slide img { max-height: 100vh; max-height: 100dvh; }
+.stage[data-zoom="true"] { padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom); }
+.stage[data-zoom="true"] .arrow.x { top: calc(14px + env(safe-area-inset-top)); }
+
+@media (max-width: 700px) {
+  /* One row: wordmark, lookbooks, needs me, save, initials. The library's
+     search box is the second row, and only on the library. */
+  .nav {
+    height: auto !important; min-height: calc(52px + env(safe-area-inset-top));
+    padding-top: calc(6px + env(safe-area-inset-top)) !important; padding-bottom: 6px !important;
+    padding-left: max(12px, env(safe-area-inset-left)); padding-right: max(12px, env(safe-area-inset-right));
+    gap: 12px; flex-wrap: nowrap; font-size: 13.5px;
+  }
+  .nav:has(.omni) { flex-wrap: wrap; row-gap: 8px; }
+  .nav .mark { font-size: 20px; }
+  .nav .btn.solid { padding: 6px 11px; font-size: 13px; }
+  .nav .avatar { width: 32px; height: 32px; font-size: 11.5px; }
+  .nav > a:not(.mark):not(.btn) { white-space: nowrap; }
+  .nav .more { margin-left: 0; }
+  /* Sticky strips under the header clear it and the notch. */
+  .bulkbar { top: calc(60px + env(safe-area-inset-top)) !important; }
+  .nav:has(.omni) ~ main .bulkbar { top: calc(108px + env(safe-area-inset-top)) !important; }
+  /* iPhone zooms into any field under 16px when it is tapped. */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="color"]):not([type="range"]), select, textarea,
+  .search, .nav .omni .search, .addtag-row .search { font-size: 16px !important; }
+  /* Tables become a sideways strip of their own, never a page wider than the phone. */
+  .table { display: block; overflow-x: auto; -webkit-overflow-scrolling: touch; white-space: nowrap; }
+  /* Bottom sheets and toasts clear the home bar. */
+  .toast { bottom: calc(14px + env(safe-area-inset-bottom)); }
+}
+/* Everything in the one row may give way a little before anything spills off
+   the side: the words shrink to an ellipsis, the wordmark, Save and the
+   initials never do. */
+@media (max-width: 700px) {
+  .nav > * { flex-shrink: 0; }
+  .nav > a:not(.mark):not(.btn) { flex-shrink: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+  .nav > .spacer { flex: 1 1 0; min-width: 0; }
+  .nav .pill { margin-left: 4px; padding: 1px 6px; }
+}
+@media (max-width: 400px) {
+  .nav { gap: 10px; font-size: 13px; }
+  .nav .mark { font-size: 19px; margin-right: 0; }
+}
+@media (max-width: 380px) {
+  .nav { gap: 8px; font-size: 12.5px; }
+  .nav .mark { font-size: 18px; }
+  .nav .btn.solid { padding: 6px 9px; }
+}

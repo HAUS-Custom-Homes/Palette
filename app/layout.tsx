@@ -18,6 +18,10 @@ export const viewport: Viewport = {
   ],
   width: "device-width",
   initialScale: 1,
+  // An app, not a document: no pinch zoom and no zoom on tapping a field
+  // (Trevor, 2026-09-24). Pictures zoom inside the viewer instead.
+  maximumScale: 1,
+  userScalable: false,
   viewportFit: "cover",
 };
 
