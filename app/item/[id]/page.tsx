@@ -18,6 +18,7 @@ import { SlidePanel } from "./slide-panel";
 import { Nav } from "../../ui/nav";
 import { AddTag } from "./add-tag";
 import { HausPicker } from "./haus-picker";
+import { Arriving } from "./arriving";
 
 export const dynamic = "force-dynamic";
 
@@ -196,6 +197,8 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
         <Link className="btn" href="/">Back to library</Link>
         {sp.shared && <span className="pill">saved from your phone</span>}
       </div>
+
+      {sp.expect && <Arriving have={media.length} expect={Math.min(50, Number(sp.expect) || 0)} />}
 
       {sp.fetched && sp.fetched !== "failed" && (
         <p className="notice" style={{ margin: "0 0 16px" }}>

@@ -48,6 +48,7 @@ export async function POST(req: NextRequest) {
   const url = haystack.match(/https?:\/\/[^\s"'<>]+/)?.[0] ?? "";
 
   let itemId: string | null = null;
+  let expected = 0;
   try {
     for (const file of files) {
       const buf = Buffer.from(await file.arrayBuffer());
@@ -65,6 +66,7 @@ export async function POST(req: NextRequest) {
         defer: (work) => after(() => work().then(() => runTagQueue(10)).catch(() => {})),
       });
       itemId = all[0]?.itemId ?? null;
+      expected = all[0]?.expected ?? 0;
     }
     if (itemId && boardId) await addToBoard(boardId, itemId, user.id).catch(() => {});
     // A note typed on the sheet lands even when the post was already here.
@@ -75,5 +77,5 @@ export async function POST(req: NextRequest) {
   }
 
   after(() => runTagQueue(5).catch(() => {}));
-  return NextResponse.redirect(here(req, itemId ? `/item/${itemId}?shared=1` : "/?shared=empty"), 303);
+  return NextResponse.redirect(here(req, itemId ? `/item/${itemId}?shared=1${expected > 1 ? `&expect=${expected}` : ""}` : "/?shared=empty"), 303);
 }
