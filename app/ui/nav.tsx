@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { ReactNode } from "react";
 import type { User } from "@/lib/users";
+import { GearIcon, MenuIcons } from "./icons";
 
 /**
  * The four places people go every day stay in the bar. Everything that is
@@ -22,15 +23,17 @@ export function Nav({ user, attention = 0, at, search }: { user: User; attention
       {search ?? <span className="spacer" />}
       <Link href="/capture" className="btn solid">+ Save</Link>
       <details className="more">
-        <summary><span className="avatar" title={user.email}>{initials}</span></summary>
+        {/* A gear, not initials: people did not find settings behind "HC"
+            (Trevor, 2026-09-24). Whose account it is shows at the top of the menu. */}
+        <summary aria-label="Settings" title="Settings"><span className="gear"><GearIcon /></span></summary>
         <div className="menu">
-          <span>{user.name ?? user.email} · {user.role}</span>
-          <Link href="/install">Get the app and share sheet</Link>
-          <Link href="/settings">Phone and settings</Link>
-          <Link href="/taxonomy">Vocabulary</Link>
-          <Link href="/backfill">Backfill</Link>
-          <Link href="/people">People</Link>
-          <Link href="/api/auth/signout">Sign out</Link>
+          <span className="who-line"><b className="who-face">{initials}</b>{user.name ?? user.email} · {user.role}</span>
+          <Link href="/install" data-lead="true"><MenuIcons.phone />Get the app and share sheet</Link>
+          <Link href="/settings"><MenuIcons.sliders />Phone and settings</Link>
+          <Link href="/taxonomy"><MenuIcons.tags />Vocabulary</Link>
+          <Link href="/people"><MenuIcons.people />People</Link>
+          <Link href="/backfill"><MenuIcons.history />Backfill</Link>
+          <Link href="/api/auth/signout" className="out"><MenuIcons.out />Sign out</Link>
         </div>
       </details>
     </div>

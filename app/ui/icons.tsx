@@ -7,6 +7,16 @@ const base = { width: 16, height: 16, viewBox: "0 0 24 24", fill: "none", stroke
 export const PlayIcon = () => (<svg {...base}><path d="M7 4v16l13-8z" fill="currentColor" stroke="none" /></svg>);
 export const StackIcon = () => (<svg {...base}><rect x="8" y="8" width="12" height="12" rx="2.5" /><path d="M16 8V6.5A2.5 2.5 0 0 0 13.5 4h-7A2.5 2.5 0 0 0 4 6.5v7A2.5 2.5 0 0 0 6.5 16H8" /></svg>);
 export const SearchIcon = () => (<svg {...base} width={20} height={20}><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></svg>);
+export const GearIcon = () => (<svg {...base} width={19} height={19}><path d="M10.3 4.3a1.7 1.7 0 0 1 3.4 0 1.7 1.7 0 0 0 2.6 1.1 1.7 1.7 0 0 1 2.4 2.4 1.7 1.7 0 0 0 1 2.5 1.7 1.7 0 0 1 0 3.4 1.7 1.7 0 0 0-1 2.6 1.7 1.7 0 0 1-2.4 2.4 1.7 1.7 0 0 0-2.6 1 1.7 1.7 0 0 1-3.4 0 1.7 1.7 0 0 0-2.5-1 1.7 1.7 0 0 1-2.4-2.4 1.7 1.7 0 0 0-1.1-2.6 1.7 1.7 0 0 1 0-3.4 1.7 1.7 0 0 0 1.1-2.5 1.7 1.7 0 0 1 2.4-2.4 1.7 1.7 0 0 0 2.5-1.1z" /><circle cx="12" cy="12" r="3" /></svg>);
+/** The settings menu's own small glyphs. */
+export const MenuIcons = {
+  phone: () => (<svg {...base}><rect x="7" y="3" width="10" height="18" rx="2.5" /><path d="M11 18h2" /></svg>),
+  sliders: () => (<svg {...base}><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></svg>),
+  tags: () => (<svg {...base}><path d="M3 12.5V5a2 2 0 0 1 2-2h7.5l8.5 8.5a2 2 0 0 1 0 2.8l-6.7 6.7a2 2 0 0 1-2.8 0z" /><circle cx="8" cy="8" r="1.5" /></svg>),
+  people: () => (<svg {...base}><circle cx="9" cy="8" r="3.5" /><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.5a3.5 3.5 0 0 1 0 7M18.5 14a6.5 6.5 0 0 1 3 6" /></svg>),
+  history: () => (<svg {...base}><path d="M12 8v4l3 2" /><path d="M3.1 11a9 9 0 1 1 .5 4M3 4v5h5" /></svg>),
+  out: () => (<svg {...base}><path d="M14 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-3M9 12h12M18 9l3 3-3 3" /></svg>),
+};
 export const FilterIcon = () => (<svg {...base}><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></svg>);
 export const InstagramIcon =() => (<svg {...base}><rect x="4" y="4" width="16" height="16" rx="4.5" /><circle cx="12" cy="12" r="3.5" /><path d="M16.8 7.2h.01" /></svg>);
 export const PinterestIcon = () => (<svg {...base}><circle cx="12" cy="12" r="9" /><path d="M11.5 8.5c2-.6 4 .6 4 2.8 0 2-1.400 3.400-3 3.400-.9 0-1.500-.4-1.800-1M12 9l-2.200 9" /></svg>);
