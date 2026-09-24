@@ -1,8 +1,24 @@
 # Handoff
-Last updated: 2026-09-24 on Trevor_Office
+Last updated: 2026-09-24 on Trevor_Lenovo
 
 2026-09-24 session (Trevor_Office): read-only status review, no code changes. TikTok focus still
 next; waiting on Trevor for the failing links. Stale items in "Next steps" tidied.
+
+2026-09-24 session (Trevor_Lenovo), deployed:
+- **Phones.** Trevor on an iPhone: the header sat under the clock, did not stay put, and the page
+  zoomed. Now (all in the "Phones (2026-09-24)" block at the end of `app/look.css`, plus `maximumScale: 1`
+  and `userScalable: false` in `app/layout.tsx`): the header pads `env(safe-area-inset-top)`, is sticky, is
+  one 52px row on phones (two on the library, for the search box), and its words ellipsize before
+  anything spills off; `overscroll-behavior-y: none`; `touch-action: manipulation`; every field is 16px
+  on phones (iOS zooms into anything smaller); tables scroll inside themselves; slides cap at 78svh.
+  Measured with no overflow or clipping at 360, 375, 393, 412 and 430px widths on the main pages.
+  **Not yet seen on a real iPhone**: the test browser is Chromium and cannot emulate the notch.
+- **"Saving the rest of the post."** A share lands on the post after its first picture; `/share` now
+  passes `expect=N` and the post page counts pictures as they arrive and refreshes itself
+  (`app/item/[id]/arriving.tsx`). Trevor had read a post of 4 as a post of 1.
+- **Inviting people:** nothing to build. Anyone @hauscustomhomes.com signs in with Google and becomes an
+  editor; roles are under People. interiors@ is to sign in itself (only works if it is a real account,
+  not a group or alias).
 
 ## Current state
 
