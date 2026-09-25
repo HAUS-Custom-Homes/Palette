@@ -27,9 +27,9 @@ next; waiting on Trevor for the failing links. Stale items in "Next steps" tidie
   Save becomes a prominent progress card; the post opens on **Saved to Palette / Done**; a **Done** button ends the
   post's details (saves the note, back to the library). The header button is **+ New**, not + Save.
 - **Local `./data` database was rebuilt (2026-09-24, Trevor's call).** It had been corrupted by a second PGlite opened on
-  every dev-server reload (fixed in `src/db/client.ts`, one handle on `globalThis`). The broken copies are set aside in
-  `data/pg-damaged-2026-09-24` and `data/pg-broken-set-aside-2026-09-24`; `npm run setup` made a fresh one (8 facets,
-  129 terms) and `npm run verify` passes on it again. `data/store` still holds 45 files from the old database (orphans).
+  every dev-server reload (fixed in `src/db/client.ts`, one handle on `globalThis`). `npm run setup` made a fresh one (8 facets,
+  129 terms); at Trevor's word the broken copies and the old database's 45 leftover pictures were then deleted.
+  `npm run verify` passes with 0 orphans.
 - **Inviting people:** nothing to build. Anyone @hauscustomhomes.com signs in with Google and becomes an
   editor; roles are under People. interiors@ is to sign in itself (only works if it is a real account,
   not a group or alias).

@@ -88,7 +88,7 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
   production secret himself.
 - Agents and tests work against `./data-test` and `PALETTE_PGLITE=memory`, never `./data`. To look at the app, an agent starts
   `npm run dev:agents` (launch config `palette-agents`), never `npm run dev`. On 2026-09-24 an agent ran the plain dev server
-  on `./data` for days and the local database stopped opening (a copy is in `data/pg-damaged-2026-09-24`). The cause was
+  on `./data` for days and the local database stopped opening (it was rebuilt). The cause was
   a second PGlite opened on every code reload; `db()` now keeps one handle on `globalThis`. Keep it that way.
 - `extension/` is its own package: run `npm install`, `npx tsc --noEmit`, `npm test` and `npm run build`
   inside it. The root typecheck and test runner exclude it. Never `cd extension` in a root command
