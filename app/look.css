@@ -491,3 +491,7 @@ details.panel.help > .panel { margin-top: 12px; background: transparent; border:
 .track-line[data-known="true"] span { animation: none; transition: width .5s ease; }
 @keyframes fill { 0% { width: 4%; } 30% { width: 45%; } 70% { width: 78%; } 100% { width: 92%; } }
 @media (prefers-reduced-motion: reduce) { .track-line span { animation-duration: 0s; width: 60%; } }
+
+/* ---- a tip at the end of a setup card ---- */
+.tip { margin: 14px 0 0; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); font-size: 14px; line-height: 1.5; }
+.tip b:first-child { color: var(--accent); }

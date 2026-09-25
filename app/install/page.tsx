@@ -48,8 +48,12 @@ export default async function InstallPage() {
         ) : (
           <li><b>Add the Shortcut.</b> Build it once, see <i>Build the Shortcut by hand</i> at the bottom of this page.</li>
         )}
-        <li><b>Pin it.</b> Share any post, scroll to the bottom of the share card, tap <b>Edit Actions</b>, then the green <b>+</b> next to Palette.</li>
       </ol>
+      <p className="tip">
+        <b>Tip: put Palette at the top.</b> The first time you share, scroll to the bottom of the share card and tap{" "}
+        <b>Edit Actions</b>. Tap the green <b>+</b> next to Palette to add it to your <b>Favorites</b>, then{" "}
+        <b>Done</b>. From then on Palette is the first action in the list, no scrolling.
+      </p>
     </section>
   );
 
