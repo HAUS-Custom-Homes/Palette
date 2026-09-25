@@ -46,8 +46,13 @@ export default async function InstallPage() {
         </li>
         {shortcutUrl ? (
           <li>
-            <b>Add the Shortcut.</b> Tap the button, then <b>Add Shortcut</b>.
-            <div style={{ marginTop: 10 }}><a className="btn solid" href={shortcutUrl}>Add the Palette Shortcut</a></div>
+            <b>Add the Shortcut.</b> Tap the button below. Apple&apos;s Shortcuts app opens and shows a card called
+            Palette: tap <b>Add Shortcut</b> at the bottom of it. That is all; there is nothing to type.
+            <div style={{ marginTop: 12 }}><a className="btn solid big" href={shortcutUrl}>Add the Palette Shortcut</a></div>
+            <p className="hint" style={{ marginTop: 8 }}>
+              If the button opens a web page instead of the Shortcuts app, the Shortcuts app was removed from this
+              phone: get it free from the App Store (search Shortcuts, by Apple), then tap the button again.
+            </p>
           </li>
         ) : (
           <li>
