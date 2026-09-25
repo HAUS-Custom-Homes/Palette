@@ -99,7 +99,7 @@ export default async function InstallPage() {
             <li>Pick the haus and tap <b>Save</b>. A bar shows it working, then the post opens with every picture at full size.</li>
           </ol>
           <p className="hint" style={{ margin: "4px 0 0" }}>
-            <b>Photos and screenshots:</b> open Palette, tap <b>+ Save</b>, choose photos. Works with no signal.
+            <b>Photos and screenshots:</b> open Palette, tap <b>+ New</b>, choose photos. Works with no signal.
           </p>
         </section>
 

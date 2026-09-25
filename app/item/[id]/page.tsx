@@ -178,6 +178,8 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
       const { reindexItem } = await import("@/search/index-item");
       await reindexItem(itemId);
       revalidatePath(`/item/${itemId}`);
+      // "Done" at the end of the details: the note is saved, then back to the library.
+      if (formData.get("done")) { revalidatePath("/"); redirect("/"); }
     } else if (what === "remove") {
       const owner = await d.one<{ created_by: string }>(`SELECT created_by FROM items WHERE id = $1`, [itemId]);
       if (owner && (owner.created_by === u.id || u.role === "owner")) {
@@ -193,10 +195,17 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
     <div>
       <Nav user={user} />
       <div className="page">
-      <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 0 14px" }}>
-        <Link className="btn" href="/">Back to library</Link>
-        {sp.shared && <span className="pill">saved from your phone</span>}
-      </div>
+      {sp.shared ? (
+        <div className="savedbar">
+          <span className="savedbar-check" aria-hidden="true">&#10003;</span>
+          <span className="savedbar-words"><b>Saved to Palette</b><span className="hint">It is in the library now.</span></span>
+          <Link className="btn solid" href="/">Done</Link>
+        </div>
+      ) : (
+        <div style={{ display: "flex", gap: 10, alignItems: "center", padding: "10px 0 14px" }}>
+          <Link className="btn" href="/">Back to library</Link>
+        </div>
+      )}
 
       {sp.expect && <Arriving have={media.length} expect={Math.min(50, Number(sp.expect) || 0)} />}
 
@@ -210,8 +219,8 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
           only a person can answer is asked here, once, and is skippable. */}
       {sp.shared && hausTags.length === 0 && user.role !== "viewer" && (
         <div className="notice" data-kind="attention" style={{ margin: "0 0 16px" }}>
-          <b>Saved. Which haus is this for?</b>{" "}
-          <span className="hint">Optional. Pick one, type a new one, or just leave.</span>
+          <b>Which haus is this for?</b>{" "}
+          <span className="hint">Optional. Pick one, type a new one, or tap Done.</span>
           <div style={{ marginTop: 8 }}>
             <HausPicker itemId={id} hauses={allHauses} action={toggle} />
           </div>
@@ -311,7 +320,7 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
 
           <div className="panel">
             <h3>Notes</h3>
-            <form action={edit}>
+            <form action={edit} id="post-info">
               <input type="hidden" name="itemId" value={id} />
               <input type="hidden" name="what" value="note" />
               <textarea name="note" className="search" rows={3} defaultValue={String(item.note ?? "")} placeholder="Why this one. Searchable." style={{ width: "100%", resize: "vertical", fontSize: 12.5 }} />
@@ -436,6 +445,17 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
               );
             })}
           </SlidePanel>
+
+          {/* The end of what a person fills in: one button that says they are
+              finished (Trevor, 2026-09-24). It submits the notes form, so a note
+              typed and never saved is kept, then goes back to the library.
+              Haus, lookbooks and tags already save as they are picked. */}
+          {user.role !== "viewer" && (
+            <div className="donebar">
+              <button className="btn solid big" type="submit" form="post-info" name="done" value="1">Done</button>
+              <span className="hint">Saves your note and goes back to the library. Everything else is saved as you pick it.</span>
+            </div>
+          )}
 
           <div className="panel">
             <h3>Provenance</h3>

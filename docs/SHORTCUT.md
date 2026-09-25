@@ -25,13 +25,13 @@ it uses. If Safari shows the sign-in page, sign in and it continues to the save 
 
 ## What happens
 
-Share → Palette → Safari opens `/save?u=<link>` → haus chips, lookbook, note → **Save the whole
-post** → `POST /share` (the same route the Android share target uses) → the post page.
+Share → Palette → Safari opens `/save?u=<link>` → haus chips, lookbook, note → **Save** (a progress
+bar shows it working) → `POST /share` (the same route the Android share target uses) → the post page.
 
 ## Photos and screenshots
 
 The share card cannot pass a photo to a web page. Add Palette to the Home Screen (Safari, Share,
-Add to Home Screen), open it, **+ Save**, choose photos. Works with no signal (FR-8).
+Add to Home Screen), open it, **+ New**, choose photos. Works with no signal (FR-8).
 
 ## The older Shortcut
 

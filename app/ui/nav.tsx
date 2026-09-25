@@ -21,7 +21,10 @@ export function Nav({ user, attention = 0, at, search }: { user: User; attention
         Needs me{attention > 0 && <span className="pill">{attention}</span>}
       </Link>
       {search ?? <span className="spacer" />}
-      <Link href="/capture" className="btn solid">+ Save</Link>
+      {/* "New", not "Save": right after a share, a Save button up here read as
+          "you still have to press this" and opened an unrelated page (Trevor,
+          2026-09-24). It starts something new: photos, a link, a screenshot. */}
+      <Link href="/capture" className="btn solid">+ New</Link>
       <details className="more">
         {/* A gear, not initials: people did not find settings behind "HC"
             (Trevor, 2026-09-24). Whose account it is shows at the top of the menu. */}

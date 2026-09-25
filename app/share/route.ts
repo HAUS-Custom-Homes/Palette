@@ -3,7 +3,7 @@ import { currentUser } from "@/auth";
 import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
 import { resolveOpenTermIds } from "@/ai/apply-tags";
-import { addToBoard } from "@/boards/boards";
+import { addToBoard, createBoard } from "@/boards/boards";
 import { ingestBuffer, ingestLink } from "@/ingest/ingest";
 import { runTagQueue } from "@/ingest/tag-worker";
 
@@ -41,11 +41,27 @@ export async function POST(req: NextRequest) {
   // The sheet at /save adds what a person chose; a bare Android share has none of it.
   const termIds = await resolveOpenTermIds("project", [String(form.get("haus") ?? "")].filter(Boolean));
   const note = String(form.get("note") ?? "").trim().slice(0, 2000) || undefined;
-  const boardId = String(form.get("board") ?? "").trim() || undefined;
+  let boardId = String(form.get("board") ?? "").trim() || undefined;
+  // A new lookbook named on the sheet is made here, then the post goes in it.
+  if (boardId === "__new") {
+    const name = String(form.get("board_name") ?? "").trim();
+    boardId = name.length >= 2 ? await createBoard(user.id, name) : undefined;
+  }
   const files = form.getAll("files").filter((f): f is File => f instanceof File && f.size > 0);
   // Instagram and most apps put the link in `text`, often after a sentence; a few use `url` or `title`.
   const haystack = [form.get("url"), form.get("text"), form.get("title")].map((v) => String(v ?? "")).join(" ");
   const url = haystack.match(/https?:\/\/[^\s"'<>]+/)?.[0] ?? "";
+
+  // A link shared from Android's share sheet opens the save sheet first, the
+  // same one the iPhone gets: haus, lookbook, note, one Save button and a bar.
+  // Saving straight away left people hunting for a Save button that was not
+  // there, and tapping the header's Save (now + New) instead (Trevor, 2026-09-24). The
+  // sheet posts back here with from=sheet. Pictures from the gallery still
+  // save at once. Offline, the service worker queues the share before it
+  // gets here, as before.
+  if (!files.length && url && form.get("from") !== "sheet") {
+    return NextResponse.redirect(here(req, `/save?u=${encodeURIComponent(url)}`), 303);
+  }
 
   let itemId: string | null = null;
   let expected = 0;

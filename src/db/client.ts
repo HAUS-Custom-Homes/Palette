@@ -38,13 +38,29 @@ export interface Db extends Query {
   readonly kind: "pglite" | "postgres";
 }
 
-let _db: Db | null = null;
-let _init: Promise<Db> | null = null;
+// One open database per process, kept on the process rather than on this
+// module. `next dev` reloads modules when code changes; a module-level handle
+// was lost on every reload and PGlite was opened a second time on the same
+// files while the first copy was still writing. Two writers corrupted the
+// local database twice on 2026-09-24 (./data, then ./data-test). A handle on
+// globalThis survives the reload, so there is only ever one. (Proved by editing
+// this file under a running dev server and loading pages after each reload.)
+type Held = { db: Db | null; init: Promise<Db> | null };
+const held: Held = ((globalThis as { __paletteDb?: Held }).__paletteDb ??= { db: null, init: null });
 
 export function db(): Promise<Db> {
-  if (_db) return Promise.resolve(_db);
-  if (!_init) _init = open().then((d) => (_db = d));
-  return _init;
+  if (held.db) return Promise.resolve(held.db);
+  if (!held.init) {
+    held.init = open()
+      .then((d) => {
+        // Closing forgets the handle, so the next db() opens afresh instead of reusing a closed one.
+        const close = d.close;
+        d.close = async () => { held.db = null; held.init = null; await close(); };
+        return (held.db = d);
+      })
+      .catch((err) => { held.init = null; throw err; });
+  }
+  return held.init;
 }
 
 async function open(): Promise<Db> {

@@ -4,8 +4,10 @@ import { requireUser } from "@/auth";
 import { listBoards } from "@/boards/boards";
 import { boot } from "@/lib/boot";
 import { facetCounts } from "@/search/query";
+import { cleanUrl } from "@/ingest/page-preview";
 import { Nav } from "../ui/nav";
 import { SaveButton } from "./save-button";
+import { LookbookField } from "./lookbook-field";
 
 export const dynamic = "force-dynamic";
 
@@ -22,8 +24,10 @@ export default async function SavePage({ searchParams }: { searchParams: Promise
   const user = await requireUser();
   const sp = await searchParams;
   const shared = [sp.u, sp.url, sp.text, sp.title].filter(Boolean).join(" ");
-  const url = shared.match(/https?:\/\/[^\s"'<>]+/)?.[0];
-  if (!url) redirect("/capture");
+  const found = shared.match(/https?:\/\/[^\s"'<>]+/)?.[0];
+  if (!found) redirect("/capture");
+  // Without the share-tracking codes Instagram and TikTok add (?igsh=...).
+  const url = (() => { try { return cleanUrl(found); } catch { return found; } })();
 
   const [facets, boards] = await Promise.all([facetCounts({}), listBoards(user.id)]);
   const hauses = facets.find((f) => f.key === "project")?.terms ?? [];
@@ -38,6 +42,7 @@ export default async function SavePage({ searchParams }: { searchParams: Promise
       <div className="page" style={{ maxWidth: 560 }}>
         <form method="post" action="/share" className="savesheet">
           <input type="hidden" name="url" value={url} />
+          <input type="hidden" name="from" value="sheet" />
           <h2>Save to Palette</h2>
           <p className="hint" style={{ margin: "0 0 14px", wordBreak: "break-all" }}>
             {site ? <b>{site}</b> : null}{site ? " · " : ""}{url.length > 90 ? `${url.slice(0, 90)}...` : url}
@@ -53,15 +58,8 @@ export default async function SavePage({ searchParams }: { searchParams: Promise
                 ))}
               </div>
 
-              {lookbooks.length > 0 && (
-                <>
-                  <div className="facet-label" style={{ marginTop: 14 }}>Lookbook <span className="hint">Optional</span></div>
-                  <select name="board" className="search" defaultValue="" style={{ width: "100%" }}>
-                    <option value="">None</option>
-                    {lookbooks.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
-                </>
-              )}
+              <div className="facet-label" style={{ marginTop: 14 }}>Lookbook <span className="hint">Optional</span></div>
+              <LookbookField lookbooks={lookbooks.map((b) => ({ id: b.id, name: b.name }))} />
 
               <div className="facet-label" style={{ marginTop: 14 }}>Note <span className="hint">Optional, searchable</span></div>
               <textarea name="note" className="search" rows={2} placeholder="Why this one" style={{ width: "100%", resize: "vertical" }} />

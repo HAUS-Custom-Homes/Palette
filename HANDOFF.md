@@ -22,8 +22,14 @@ next; waiting on Trevor for the failing links. Stale items in "Next steps" tidie
   steps per device plus one "Saving a post" section; help, other devices and the hand-built Shortcut are folded.
 - **Save is one button that becomes a progress bar** on `/save`, and the post page continues on the same bar
   while the rest of the pictures arrive.
-- **Local `./data` database is damaged (open decision for Trevor).** An agent ran `npm run dev` on `./data` all
-  session (against CLAUDE.md) and stopped it while a background save was writing; PGlite now aborts on open.
+- **Share flow, same on both phones.** An Android share of a link now opens the save sheet too (`/share` sends a bare
+  link to `/save`; the sheet posts back with `from=sheet`). The sheet offers **+ New lookbook** (created on save).
+  Save becomes a prominent progress card; the post opens on **Saved to Palette / Done**; a **Done** button ends the
+  post's details (saves the note, back to the library). The header button is **+ New**, not + Save.
+- **Local `./data` database is damaged (open decision for Trevor).** Cause found and fixed: `src/db/client.ts` kept
+  its PGlite handle in a module variable, `next dev` reloads modules on every code edit, and each reload opened a
+  second PGlite on the same files; two writers corrupted `./data` and later `./data-test`. The handle now lives on
+  `globalThis` (proved by editing that file under a running dev server). PGlite now aborts on open for `./data`.
   Production is unaffected (hosted Postgres). A copy is in `data/pg-damaged-2026-09-24`. Options: rebuild a fresh
   local database (`npm run setup`, loses local-only test posts) or leave it. Agents now use `npm run dev:agents`
   (`./data-test`), and `npm run verify` must be run with `PALETTE_DATA_DIR=./data-test` until `./data` is rebuilt.
