@@ -495,3 +495,8 @@ details.panel.help > .panel { margin-top: 12px; background: transparent; border:
 /* ---- a tip at the end of a setup card ---- */
 .tip { margin: 14px 0 0; padding: 12px 14px; border-radius: 14px; background: color-mix(in srgb, var(--accent) 10%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); font-size: 14px; line-height: 1.5; }
 .tip b:first-child { color: var(--accent); }
+
+/* A link dressed as a button is a box, not a word: inline, its padding spilled
+   over the lines around it (the one-tap Shortcut button, 2026-09-24). */
+a.btn, .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: 1.25; text-decoration: none; vertical-align: middle; }
+.btn.big { padding: 14px 22px; font-size: 15px; }
