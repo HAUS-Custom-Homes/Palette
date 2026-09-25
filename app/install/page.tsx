@@ -29,75 +29,100 @@ export default async function InstallPage() {
   const host = process.env.AUTH_URL ?? `https://${h.get("x-forwarded-host") ?? h.get("host") ?? "hauspalette.com"}`;
   const shortcutUrl = process.env.PALETTE_SHORTCUT_URL ?? "";
 
+  const site = host.replace(/^https?:\/\//, "");
+  const buildSteps = (
+    <ol className="steps">
+      <li><b>Name it.</b> Tap the name at the top (it says New Shortcut), choose <b>Rename</b>, type <code>Palette</code>.</li>
+      <li><b>Put it in the share card.</b> Tap the <b>i</b> in a circle at the bottom. Turn on <b>Show in Share Sheet</b>. Tap <b>Done</b>. A block appears at the top: <i>Receive Any input from Share Sheet</i>.</li>
+      <li><b>Say what it accepts.</b> Tap the blue word <b>Any</b> (or <b>Apps and 8 more</b>). Tap <b>Clear</b>, switch on only <b>URLs</b>, tap <b>Done</b>.</li>
+      <li><b>Add the one action.</b> Tap <i>Search Actions</i> at the bottom, type <code>Open URLs</code>, tap it.</li>
+      <li><b>The address.</b> Tap the faint <b>URL</b> in that block. If a blue <b>Shortcut Input</b> bubble is already there, delete it. Type <code>{host}/save?u=</code> and then tap <b>Shortcut Input</b> in the strip above the keyboard, so the bubble sits right after the <code>=</code>.</li>
+      <li><b>Done.</b> Two blocks: <i>Receive URLs</i>, then <i>Open</i>. It saves itself.</li>
+    </ol>
+  );
+
   const iphone = (
     <section className="panel" key="iphone" id="iphone">
       <h3>iPhone and iPad</h3>
-      <p className="lead-line">Share, then Palette. From Instagram, TikTok, Pinterest, Safari, anywhere there is a link.</p>
-      <p className="hint">
-        Apple does not let websites into the share sheet, so Palette gets there as a Shortcut. It is two blocks, takes
-        about two minutes once per phone, and needs no key. Sharing opens a small Palette page that asks which haus
-        and lookbook, saves the whole post, and shows it.
-      </p>
+      <p className="lead-line">Save any post from Instagram, TikTok, Pinterest or a website in two taps: Share, then Palette.</p>
+      <p className="hint">About three minutes, once per phone. You only need to do this once.</p>
 
       <ol className="steps big">
         <li>
-          <b>Sign in once in Safari.</b> Open <code>{host.replace(/^https?:\/\//, "")}</code> in Safari and sign in
-          with Google. The share sheet uses Safari, so this is the sign-in it will use.
+          <b>Sign in with Safari.</b> Open the <b>Safari</b> app (the blue compass, not Chrome), go to{" "}
+          <code>{site}</code> and tap <b>Sign in with Google</b>. Use your @hauscustomhomes.com account. Saving from the
+          share button opens Safari, so this is the sign-in it will use.
         </li>
+
         {shortcutUrl ? (
           <li>
-            <b>Add the Shortcut.</b> Tap the button below. Apple&apos;s Shortcuts app opens and shows a card called
-            Palette: tap <b>Add Shortcut</b> at the bottom of it. That is all; there is nothing to type.
-            <div style={{ marginTop: 12 }}><a className="btn solid big" href={shortcutUrl}>Add the Palette Shortcut</a></div>
+            <b>Add Palette to your share button.</b> On this phone, tap the button below.
+            <div style={{ margin: "12px 0 8px" }}><a className="btn solid big" href={shortcutUrl}>Add the Palette Shortcut</a></div>
+            Apple&apos;s <b>Shortcuts</b> app opens with a card called <b>Palette</b>. Tap <b>Add Shortcut</b> at the
+            bottom of the card. Nothing to type, nothing to set up.
             <p className="hint" style={{ marginTop: 8 }}>
-              If the button opens a web page instead of the Shortcuts app, the Shortcuts app was removed from this
-              phone: get it free from the App Store (search Shortcuts, by Apple), then tap the button again.
+              If a web page opens instead of the Shortcuts app, Shortcuts was removed from this phone. Get it free from
+              the App Store (search <b>Shortcuts</b>, made by Apple), then come back here and tap the button again.
             </p>
           </li>
         ) : (
           <li>
-            <b>Build the Shortcut.</b> Open <b>Shortcuts</b>, Apple&apos;s own app that comes on every iPhone (swipe
-            down on the Home Screen and type Shortcuts). Tap <b>+</b>.
-            <ol className="steps">
-              <li><b>Name it.</b> Tap the name at the top (it says New Shortcut), choose <b>Rename</b>, type <code>Palette</code>.</li>
-              <li><b>Put it in the share card.</b> Tap the <b>i</b> in a circle at the bottom. Turn on <b>Show in Share Sheet</b>. Tap <b>Done</b>. A block appears at the top: <i>Receive Any input from Share Sheet</i>.</li>
-              <li><b>Say what it accepts.</b> Tap the blue word <b>Any</b> (or <b>Apps and 8 more</b>). Tap <b>Clear</b>, switch on only <b>URLs</b>, tap <b>Done</b>. The block reads <i>Receive URLs from Share Sheet</i>.</li>
-              <li><b>Add the one action.</b> Tap <i>Search Actions</i> at the bottom, type <code>Open URLs</code>, tap it.</li>
-              <li><b>The address.</b> In that block tap the faint <b>URL</b>. If a blue <b>Shortcut Input</b> bubble is already there, delete it. Type exactly <code>{host}/save?u=</code> and then, with the cursor right after the <code>=</code>, tap <b>Shortcut Input</b> in the strip above the keyboard. The box reads <code>{host}/save?u=</code> followed by the blue bubble.</li>
-              <li><b>That is the whole shortcut:</b> <i>Receive URLs</i>, then <i>Open URLs</i>. Nothing else. It saves itself.</li>
-            </ol>
-            <p className="hint" style={{ marginTop: 8 }}>
-              The first time, iPhone asks whether the shortcut may open {host.replace(/^https?:\/\//, "")}: choose <b>Always Allow</b>.
-            </p>
+            <b>Add Palette to your share button.</b> Open <b>Shortcuts</b>, Apple&apos;s own app (swipe down on the Home
+            Screen and type Shortcuts). Tap <b>+</b>.
+            {buildSteps}
           </li>
         )}
+
         <li>
-          <b>Try it.</b> Open any Instagram post, tap the paper plane, then <b>Share to...</b> (or the three dots, then
-          <b> Share to...</b>). In the share card, <b>Palette</b> is in the list of actions under the row of app icons,
-          next to things like Copy. Tap it: Safari opens Palette&apos;s save page, you pick the haus, tap <b>Save the
-          whole post</b>, and the post opens at full size.
+          <b>Save your first post.</b> Open a post in Instagram and tap the <b>paper plane</b> under it. In the row
+          along the bottom, swipe to the end and tap <b>Share</b> (a square with an arrow). The iPhone share card slides
+          up.
+          <ul className="steps">
+            <li>Scroll down past the row of app icons. <b>Palette</b> is in the list of actions below them, next to
+              things like Copy. (It is never in the row of app icons; Apple keeps that for App Store apps.)</li>
+            <li>Tap <b>Palette</b>. The first time, the iPhone asks if Palette may open {site}: tap <b>Always Allow</b>.</li>
+            <li>Palette opens in Safari. Pick the haus, a lookbook if you like, add a note if you like, and tap
+              <b> Save the whole post</b>. Every picture comes in at full size.</li>
+          </ul>
+          <p className="hint">TikTok: tap <b>Share</b> (the arrow), then <b>More</b> or <b>Share to</b>. Pinterest:
+            tap the share icon on the pin. Safari: the share button at the bottom. Then Palette, the same way.</p>
         </li>
+
         <li>
-          <b>Pin it to the top.</b> Scroll to the bottom of the share card, tap <b>Edit Actions...</b>, and tap the
-          green <b>+</b> beside Palette. It stays at the top from then on.
+          <b>Put Palette at the top of the list.</b> In the share card, scroll to the very bottom and tap{" "}
+          <b>Edit Actions...</b>. Tap the green <b>+</b> next to Palette, then <b>Done</b>. From now on Palette is the
+          first thing in the list.
         </li>
+
         <li>
-          <b>Photos and screenshots.</b> Put Palette on your Home Screen: in Safari open <code>{host.replace(/^https?:\/\//, "")}</code>,
-          tap <b>Share</b>, then <b>Add to Home Screen</b>. Open it, tap <b>+ Save</b>, choose photos. It works with no signal.
+          <b>Photos and screenshots.</b> The share button only passes links. For pictures on your phone, add Palette to
+          your Home Screen: in Safari at <code>{site}</code>, tap the share button, then <b>Add to Home Screen</b>. Open
+          it, tap <b>+ Save</b>, and choose photos. It works even with no signal.
         </li>
+
         <li>
-          <b>If it does not work:</b>
+          <b>If something is off:</b>
           <ol className="steps">
-            <li><i>Safari opens the sign-in page</i>: sign in with Google, and it continues to the save page by itself.</li>
-            <li><i>Safari opens the library instead of a save page</i>: the address in the Open URLs block is not exactly <code>{host}/save?u=</code> with the Shortcut Input bubble after the <code>=</code>.</li>
-            <li><i>Palette is not in the share card</i>: open the shortcut, tap the <b>i</b>, check <b>Show in Share Sheet</b>. Look in the list of actions under the app icons, not among the icons.</li>
-            <li>Still stuck: take a screenshot of the shortcut and send it to Trevor.</li>
+            <li><i>Palette is not in the share card</i>: scroll down past the app icons, it is in the list below. Still
+              missing? Open Shortcuts, press and hold Palette, tap <b>Details</b>, turn on <b>Show in Share Sheet</b>.</li>
+            <li><i>It opens a sign-in page</i>: sign in with Google in Safari. It carries on to the save page.</li>
+            <li><i>It opens the library instead of the save page</i>: delete the Palette shortcut and add it again with
+              the button above.</li>
+            <li>Anything else: take a screenshot and send it to Trevor.</li>
           </ol>
         </li>
       </ol>
-      <details style={{ marginTop: 12 }}>
+
+      {shortcutUrl && (
+        <details style={{ marginTop: 12 }}>
+          <summary className="hint">Build the Shortcut by hand instead</summary>
+          <p className="hint">Open Shortcuts, tap <b>+</b>, then:</p>
+          {buildSteps}
+        </details>
+      )}
+      <details style={{ marginTop: 8 }}>
         <summary className="hint">The older Shortcut, with a phone key, still works.</summary>
-        <p className="hint">It posts straight to Palette and shows a notification, with no questions asked. If you built it, keep it or replace it; the key below is only for that.</p>
+        <p className="hint">It saves straight away with no questions and shows a notification. The key below is only for that one.</p>
         <PhoneToken />
       </details>
     </section>
@@ -125,7 +150,7 @@ export default async function InstallPage() {
           right of the address bar. On Windows, Palette then appears in the system <b>Share</b> window, the one Edge,
           Photos and the Snipping Tool open.
         </li>
-        <li><b>Paste a link.</b> Copy a post&apos;s link and paste it into the dashed box on the library page. It saves on paste.</li>
+        <li><b>Paste a link.</b> Copy a post&apos;s link and paste it into the search box at the top of the library. It saves on paste, every picture at full size.</li>
         <li><b>The browser extension</b> adds a Palette button and a right-click <b>Save image to Palette</b> on every site. Ask Trevor for it; it is being published to the company&apos;s Chrome.</li>
       </ol>
     </section>
