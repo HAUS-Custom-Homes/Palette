@@ -471,3 +471,11 @@ html { touch-action: manipulation; -webkit-text-size-adjust: 100%; text-size-adj
 }
 @media (max-width: 700px) { .nav .gear { width: 34px; height: 34px; } }
 @media (max-width: 380px) { .nav .gear { width: 32px; height: 32px; } .nav .gear svg { width: 17px; height: 17px; } .nav { gap: 7px; } }
+
+/* ---- /install: collapsible help (2026-09-24) ---- */
+details.panel.help { margin-top: 14px; }
+details.panel.help > summary { cursor: pointer; list-style: none; }
+details.panel.help > summary::-webkit-details-marker { display: none; }
+details.panel.help > summary h3::after { content: " +"; color: var(--muted); }
+details.panel.help[open] > summary h3::after { content: " -"; }
+details.panel.help > .panel { margin-top: 12px; background: transparent; border: 0; padding: 0; }
