@@ -26,8 +26,9 @@ export function Arriving({ have, expect }: { have: number; expect: number }) {
   if (!waiting) return null;
   const left = expect - have;
   return (
-    <p className="notice" style={{ margin: "0 0 16px" }}>
-      <b>Saving the rest of the post.</b> {have} of {expect} here; {left} more {left === 1 ? "picture is" : "pictures are"} on the way and will appear by themselves.
-    </p>
+    <div className="notice savebar-progress arriving" role="status" aria-live="polite" style={{ margin: "0 0 16px" }}>
+      <div className="track-line" data-known="true"><span style={{ width: `${Math.max(8, Math.round((have / expect) * 100))}%` }} /></div>
+      <p><b>Saved {have} of {expect} pictures.</b> {left} more {left === 1 ? "is" : "are"} on the way; they appear here by themselves.</p>
+    </div>
   );
 }

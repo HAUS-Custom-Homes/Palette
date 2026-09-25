@@ -479,3 +479,15 @@ details.panel.help > summary::-webkit-details-marker { display: none; }
 details.panel.help > summary h3::after { content: " +"; color: var(--muted); }
 details.panel.help[open] > summary h3::after { content: " -"; }
 details.panel.help > .panel { margin-top: 12px; background: transparent; border: 0; padding: 0; }
+
+/* ---- Save, then a bar that shows it working (2026-09-24) ---- */
+.savego { margin-top: 20px; }
+.savego-btn { width: 100%; justify-content: center; padding: 15px 22px !important; font-size: 16px !important; }
+.savebar-progress p { margin: 10px 0 0; font-size: 14px; color: var(--text); text-align: center; }
+.savebar-progress.arriving p { text-align: left; margin-top: 8px; font-size: 13.5px; color: var(--muted); }
+.savebar-progress.arriving p b { color: var(--text); font-weight: 500; }
+.track-line { height: 6px; border-radius: 999px; background: var(--surface-2); overflow: hidden; }
+.track-line span { display: block; height: 100%; width: 0; border-radius: 999px; background: var(--accent); animation: fill 9s cubic-bezier(.15,.6,.3,1) forwards; }
+.track-line[data-known="true"] span { animation: none; transition: width .5s ease; }
+@keyframes fill { 0% { width: 4%; } 30% { width: 45%; } 70% { width: 78%; } 100% { width: 92%; } }
+@media (prefers-reduced-motion: reduce) { .track-line span { animation-duration: 0s; width: 60%; } }

@@ -5,6 +5,7 @@ import { listBoards } from "@/boards/boards";
 import { boot } from "@/lib/boot";
 import { facetCounts } from "@/search/query";
 import { Nav } from "../ui/nav";
+import { SaveButton } from "./save-button";
 
 export const dynamic = "force-dynamic";
 
@@ -67,11 +68,10 @@ export default async function SavePage({ searchParams }: { searchParams: Promise
             </>
           )}
 
-          <div className="savesheet-actions">
-            <button className="btn solid big" type="submit">Save the whole post</button>
-            <Link className="btn" href="/">Cancel</Link>
-          </div>
-          <p className="hint" style={{ marginTop: 10 }}>Every picture in the post, at full size, and the video where it can be had.</p>
+          <SaveButton site={site} />
+          <p className="hint" style={{ marginTop: 10, textAlign: "center" }}>
+            Every picture in the post, at full size. <Link href="/" style={{ color: "var(--muted)", textDecoration: "underline" }}>Cancel</Link>
+          </p>
         </form>
       </div>
     </div>

@@ -5,6 +5,7 @@
   "description": "HAUS visual reference library. REF-01 concept build.",
   "scripts": {
     "dev": "next dev -p 3200",
+    "dev:agents": "node tools/dev-agents.mjs",
     "build": "next build",
     "start": "next start -p 3200",
     "typecheck": "tsc --noEmit",

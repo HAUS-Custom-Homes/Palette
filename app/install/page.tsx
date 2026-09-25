@@ -92,7 +92,7 @@ export default async function InstallPage() {
           <ol className="steps big">
             <li>In Instagram, TikTok, Pinterest or a website, tap <b>Share</b>.</li>
             <li>Tap <b>Palette</b>. {device !== "android" && <span className="hint">On iPhone it is in the list under the row of app icons.</span>}</li>
-            <li>Pick the haus, then <b>Save</b>. Every picture comes in at full size.</li>
+            <li>Pick the haus and tap <b>Save</b>. A bar shows it working, then the post opens with every picture at full size.</li>
           </ol>
           <p className="hint" style={{ margin: "4px 0 0" }}>
             <b>Photos and screenshots:</b> open Palette, tap <b>+ Save</b>, choose photos. Works with no signal.

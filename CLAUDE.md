@@ -83,7 +83,9 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
   user-driven, in the user's own browser or phone (REF-01 R-1). Same rule as Buildertrend.
 - `.env` holds credentials. Gitignored, never printed, pasted or committed. Trevor enters every
   production secret himself.
-- Agents and tests work against `./data-test` and `PALETTE_PGLITE=memory`, never `./data`.
+- Agents and tests work against `./data-test` and `PALETTE_PGLITE=memory`, never `./data`. To look at the app, an agent starts
+  `npm run dev:agents` (launch config `palette-agents`), never `npm run dev`. On 2026-09-24 an agent ran the plain dev server
+  on `./data` for days, stopped it mid-save, and the local database would no longer open (a copy is in `data/pg-damaged-2026-09-24`).
 - `extension/` is its own package: run `npm install`, `npx tsc --noEmit`, `npm test` and `npm run build`
   inside it. The root typecheck and test runner exclude it. Never `cd extension` in a root command
   without coming back.

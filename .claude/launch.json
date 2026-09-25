@@ -4,7 +4,18 @@
     {
       "name": "palette",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
+      "port": 3200
+    },
+    {
+      "name": "palette-agents",
+      "runtimeExecutable": "node",
+      "runtimeArgs": [
+        "tools/dev-agents.mjs"
+      ],
       "port": 3200
     }
   ]
