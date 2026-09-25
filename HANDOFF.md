@@ -16,6 +16,17 @@ next; waiting on Trevor for the failing links. Stale items in "Next steps" tidie
 - **"Saving the rest of the post."** A share lands on the post after its first picture; `/share` now
   passes `expect=N` and the post page counts pictures as they arrive and refreshes itself
   (`app/item/[id]/arriving.tsx`). Trevor had read a post of 4 as a post of 1.
+- **Settings is a gear** (not the owner's initials); the menu has icons and names whose account it is.
+- **iPhone Shortcut is one tap.** Trevor shared his two-block Shortcut; checked it holds no key; its iCloud link is
+  `PALETTE_SHORTCUT_URL` in Railway, so `/install` shows **Add the Palette Shortcut**. `/install` is now three
+  steps per device plus one "Saving a post" section; help, other devices and the hand-built Shortcut are folded.
+- **Save is one button that becomes a progress bar** on `/save`, and the post page continues on the same bar
+  while the rest of the pictures arrive.
+- **Local `./data` database is damaged (open decision for Trevor).** An agent ran `npm run dev` on `./data` all
+  session (against CLAUDE.md) and stopped it while a background save was writing; PGlite now aborts on open.
+  Production is unaffected (hosted Postgres). A copy is in `data/pg-damaged-2026-09-24`. Options: rebuild a fresh
+  local database (`npm run setup`, loses local-only test posts) or leave it. Agents now use `npm run dev:agents`
+  (`./data-test`), and `npm run verify` must be run with `PALETTE_DATA_DIR=./data-test` until `./data` is rebuilt.
 - **Inviting people:** nothing to build. Anyone @hauscustomhomes.com signs in with Google and becomes an
   editor; roles are under People. interiors@ is to sign in itself (only works if it is a real account,
   not a group or alias).
