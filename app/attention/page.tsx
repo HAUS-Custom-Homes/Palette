@@ -4,7 +4,9 @@ import { requireUser } from "@/auth";
 import { db } from "@/db/client";
 import { boot } from "@/lib/boot";
 import { requeue, runTagQueue } from "@/ingest/tag-worker";
-import { quarantined, search } from "@/search/query";
+import { setHumanTag } from "@/ai/apply-tags";
+import { quarantined, unsurePosts } from "@/search/query";
+import { displayName } from "../ui/icons";
 import { Nav } from "../ui/nav";
 
 export const dynamic = "force-dynamic";
@@ -20,7 +22,7 @@ export default async function AttentionPage() {
 
   const [q, review] = await Promise.all([
     quarantined(user.id),
-    search({ reviewOnly: true, ownerId: user.id, limit: 60 }),
+    unsurePosts(user.id),
   ]);
 
   async function retryAll() {
@@ -38,6 +40,21 @@ export default async function AttentionPage() {
     revalidatePath("/attention");
   }
 
+  // Keep or remove one doubtful tag, on every picture of the post that carries it.
+  async function decide(formData: FormData) {
+    "use server";
+    const u = await requireUser();
+    const action = formData.get("action") === "add" ? "add" : "remove";
+    const termId = String(formData.get("termId"));
+    const d = await db();
+    const ids = String(formData.get("itemIds") ?? "").split(",").filter(Boolean);
+    for (const itemId of ids) {
+      const mine = await d.one(`SELECT 1 AS x FROM items WHERE id = $1 AND created_by = $2`, [itemId, u.id]);
+      if (mine) await setHumanTag(itemId, termId, action, u.id);
+    }
+    revalidatePath("/attention");
+  }
+
   async function remove(formData: FormData) {
     "use server";
     const u = await requireUser();
@@ -50,7 +67,7 @@ export default async function AttentionPage() {
 
   return (
     <div>
-      <Nav user={user} attention={q.length + review.total} />
+      <Nav user={user} attention={q.length + review.length} />
       <div style={{ padding: 20, maxWidth: 1100 }}>
         <h2 style={{ fontFamily: "var(--serif)", fontWeight: 400, margin: "0 0 4px" }}>Needs me</h2>
         <p className="hint" style={{ marginTop: 0 }}>Your images only. Nobody else sees this list.</p>
@@ -91,23 +108,46 @@ export default async function AttentionPage() {
         </div>
 
         <div className="panel">
-          <h3>Unsure tags ({review.total})</h3>
-          {review.items.length === 0 ? (
+          <h3>Tags to check ({review.length})</h3>
+          {review.length === 0 ? (
             <p className="hint" style={{ margin: 0 }}>Nothing to check.</p>
           ) : (
             <>
               <p className="hint" style={{ marginTop: 0 }}>
-                The model put a low-confidence tag on these. Open each one, keep what is right, cross out what is
-                wrong. A cross-out is permanent.
+                The model was not sure about these. <b>&#10003;</b> keeps a tag, <b>&#10005;</b> removes it for good.
               </p>
-              <div className="grid" style={{ padding: 0, columns: "4 160px" }}>
-                {review.items.map((it) => (
-                  <Link className="card" key={it.id} href={`/item/${it.id}`}>
-                    <img src={`/api/asset/${it.sha256}/grid`} alt="" width={it.width ?? 400} height={it.height ?? 300} loading="lazy" />
-                    <figcaption>{it.captionAi ?? it.title ?? "untitled"}</figcaption>
-                  </Link>
+              <ul className="unsure">
+                {review.map((p) => (
+                  <li key={p.id} className="unsure-row">
+                    <Link href={`/item/${p.id}`} className="unsure-thumb">
+                      <img src={`/api/asset/${p.sha256}/thumb`} alt="" loading="lazy" />
+                      {p.pictures > 1 && <span className="unsure-n">{p.pictures}</span>}
+                    </Link>
+                    <div className="unsure-body">
+                      <Link href={`/item/${p.id}`} className="unsure-title">{displayName(p.captionAi, p.title)}</Link>
+                      <div className="unsure-tags">
+                        {p.tags.map((t) => (
+                          <span className="unsure-tag" key={t.termId}>
+                            <span className="unsure-label">{t.label}<i>{t.facetLabel.toLowerCase()}</i></span>
+                            <form action={decide}>
+                              <input type="hidden" name="termId" value={t.termId} />
+                              <input type="hidden" name="itemIds" value={t.itemIds.join(",")} />
+                              <input type="hidden" name="action" value="add" />
+                              <button type="submit" className="keep" aria-label={`Keep ${t.label}`}>&#10003;</button>
+                            </form>
+                            <form action={decide}>
+                              <input type="hidden" name="termId" value={t.termId} />
+                              <input type="hidden" name="itemIds" value={t.itemIds.join(",")} />
+                              <input type="hidden" name="action" value="remove" />
+                              <button type="submit" className="drop" aria-label={`Remove ${t.label}`}>&#10005;</button>
+                            </form>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </li>
                 ))}
-              </div>
+              </ul>
             </>
           )}
         </div>

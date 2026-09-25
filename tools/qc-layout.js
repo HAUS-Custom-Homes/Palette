@@ -36,12 +36,18 @@ window.paletteQC = async (widths = [360, 390, 430]) => {
           const cs = w.getComputedStyle(el);
           if (cs.position === "absolute" || cs.position === "fixed") continue;
           if (el.closest(".nav .menu, .fpanel .sheet, .toast, .stage")) continue;
-          const p = el.parentElement.getBoundingClientRect();
+          // Measured against the nearest ancestor that has a box of its own
+          // (a form with display: contents has none).
+          let box = el.parentElement;
+          while (box && w.getComputedStyle(box).display === "contents") box = box.parentElement;
+          const p = box.getBoundingClientRect();
           const out = Math.max(p.top - b.top, b.bottom - p.bottom);
           const label = `${el.tagName.toLowerCase()} "${(el.innerText || el.value || el.name || "").trim().slice(0, 28)}"`;
           if (out > 2) bad.push(`${label} sticks out of its line by ${Math.round(out)}px`);
           if (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName) && !/checkbox|radio|color|range|file/.test(el.type) && parseFloat(cs.fontSize) < 16) bad.push(`${label} is ${cs.fontSize}, iPhone will zoom`);
         }
+        // A tile or row squeezed to a sliver (the Needs me list at a quarter inch, 2026-09-24).
+        for (const row of d.querySelectorAll(".unsure-row, .card")) { const rw = row.getBoundingClientRect().width; if (rw && rw < 100) { bad.push(`${String(row.className).split(" ")[0]} only ${Math.round(rw)}px wide`); break; } }
         if (bad.length) found[r.split("?")[0]] = bad.slice(0, 6);
       } catch (e) { found[r] = [String(e)]; }
       f.remove();

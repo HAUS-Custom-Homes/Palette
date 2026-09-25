@@ -531,3 +531,26 @@ a.btn, .btn { display: inline-flex; align-items: center; justify-content: center
 .donebar { margin: 18px 0 8px; display: flex; flex-direction: column; gap: 8px; }
 .donebar .btn.solid.big { width: 100%; padding: 15px 22px; font-size: 16px; }
 .donebar .hint { text-align: center; }
+
+/* ---- Needs me: tags to check, one row per post (2026-09-24) ---- */
+.unsure { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.unsure-row { display: flex; gap: 12px; align-items: flex-start; padding: 10px; border-radius: 16px; background: var(--surface-2); }
+.unsure-thumb { flex: none; width: 72px; height: 72px; border-radius: 12px; overflow: hidden; position: relative; display: block; }
+.unsure-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.unsure-n { position: absolute; right: 4px; bottom: 4px; background: rgba(0,0,0,.65); color: #fff; font-size: 11px; padding: 1px 6px; border-radius: 999px; }
+.unsure-body { flex: 1; min-width: 0; }
+.unsure-title { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; color: var(--text); font-size: 14.5px; font-weight: 500; line-height: 1.3; margin-bottom: 8px; }
+.unsure-tags { display: flex; flex-wrap: wrap; gap: 6px; }
+.unsure-tag { display: inline-flex; align-items: center; gap: 2px; padding: 2px 2px 2px 11px; border-radius: 999px; border: 1px dashed var(--accent-dim); background: var(--surface); font-size: 13.5px; }
+.unsure-tag form { display: contents; }
+.unsure-label { display: inline-flex; flex-direction: column; line-height: 1.15; padding-right: 4px; }
+.unsure-label i { font-style: normal; font-size: 10.5px; color: var(--muted); }
+.unsure-tag button { width: 32px; height: 32px; border-radius: 50%; border: 0; background: transparent; color: var(--muted); font-size: 14px; cursor: pointer; display: grid; place-items: center; }
+.unsure-tag button.keep:hover, .unsure-tag button.keep:active { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--text); }
+.unsure-tag button.drop:hover, .unsure-tag button.drop:active { background: color-mix(in srgb, var(--warn) 22%, transparent); color: var(--text); }
+/* Picture and title on top, the tags across the full width underneath. */
+.unsure-row { display: grid; grid-template-columns: 56px minmax(0, 1fr); column-gap: 12px; row-gap: 10px; align-items: center; }
+.unsure-thumb { width: 56px; height: 56px; }
+.unsure-body { display: contents; }
+.unsure-title { margin: 0; }
+.unsure-tags { grid-column: 1 / -1; }

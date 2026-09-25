@@ -136,8 +136,8 @@ function buildWhere(p: SearchParams, startAt = 1, opts: { skipText?: boolean } =
 
   if (p.reviewOnly) {
     wheres.push(
-      `EXISTS (SELECT 1 FROM item_terms it
-                WHERE it.item_id = i.id AND it.source = 'ai' AND (it.confidence < $${n++} OR it.suggested))`,
+      `EXISTS (SELECT 1 FROM item_terms it JOIN items m ON m.id = it.item_id
+                WHERE ${MEMBER} AND it.source = 'ai' AND NOT it.rejected AND (it.confidence < $${n++} OR it.suggested))`,
     );
     params.push(config.reviewConfidenceThreshold);
   }
@@ -545,8 +545,9 @@ export async function stats(ownerId?: string) {
        (SELECT count(DISTINCT item_id) FROM item_terms WHERE source = 'ai')::text AS tagged,
        (SELECT count(*) FROM item_terms WHERE source = 'human')::text AS "humanTags",
        (SELECT count(DISTINCT item_id) FROM item_terms WHERE source = 'ai' AND (confidence < $1 OR suggested))::text AS "needsReview",
-       (SELECT count(DISTINCT it.item_id) FROM item_terms it JOIN items i ON i.id = it.item_id
-         WHERE it.source = 'ai' AND (it.confidence < $1 OR it.suggested) AND i.created_by = $2)::text AS "myReview",
+       (SELECT count(DISTINCT COALESCE(i.group_id, i.id)) FROM item_terms it JOIN items i ON i.id = it.item_id
+         WHERE it.source = 'ai' AND NOT it.rejected AND (it.confidence < $1 OR it.suggested) AND i.created_by = $2
+           AND i.deleted_at IS NULL AND i.variant_of IS NULL)::text AS "myReview",
        (SELECT count(*) FROM ingest_jobs j JOIN items i ON i.id = (j.payload->>'itemId')::uuid
          WHERE j.state = 'quarantined' AND i.created_by = $2)::text AS "myQuarantined",
        (SELECT count(*) FROM proposed_terms WHERE status = 'pending')::text AS proposed,
@@ -560,4 +561,46 @@ export async function stats(ownerId?: string) {
     humanTags: n("humanTags"), needsReview: n("needsReview"), myReview: n("myReview"),
     myQuarantined: n("myQuarantined"), proposed: n("proposed"), variants: n("variants"), people: n("people"),
   };
+}
+
+/**
+ * The "Needs me" list, readable on a phone (2026-09-24): each of a person's
+ * posts with a tag the model was unsure of, the tags themselves, and which
+ * pictures carry each one, so it can be kept or removed without opening the
+ * post. A tag the model saw on three slides is one chip that acts on all three.
+ */
+export type UnsureTag = { termId: string; label: string; facetLabel: string; confidence: number; itemIds: string[] };
+export type UnsurePost = { id: string; sha256: string; title: string | null; captionAi: string | null; pictures: number; tags: UnsureTag[] };
+
+export async function unsurePosts(ownerId: string, limit = 60): Promise<UnsurePost[]> {
+  const d = await db();
+  const rows = await d.query<{ lead: string; sha256: string; title: string | null; captionAi: string | null; pictures: number;
+    termId: string; label: string; facetLabel: string; confidence: number; itemIds: string[] }>(
+    `WITH unsure AS (
+       SELECT COALESCE(m.group_id, m.id) AS lead, it.term_id, max(it.confidence)::float AS confidence, array_agg(m.id::text) AS item_ids
+         FROM item_terms it JOIN items m ON m.id = it.item_id
+        WHERE it.source = 'ai' AND NOT it.rejected AND (it.confidence < $1 OR it.suggested)
+          AND m.created_by = $2 AND m.deleted_at IS NULL AND m.variant_of IS NULL
+        GROUP BY 1, 2
+     ), posts AS (
+       SELECT lead FROM unsure GROUP BY lead ORDER BY lead DESC LIMIT $3
+     )
+     SELECT u.lead, a.sha256, l.title, l.caption_ai AS "captionAi",
+            (SELECT count(*)::int FROM items m WHERE (m.id = l.id OR m.group_id = l.id) AND m.deleted_at IS NULL AND m.variant_of IS NULL) AS pictures,
+            u.term_id AS "termId", t.label, f.label AS "facetLabel", u.confidence, u.item_ids AS "itemIds"
+       FROM unsure u JOIN posts p ON p.lead = u.lead
+       JOIN items l ON l.id = u.lead
+       JOIN assets a ON a.id = COALESCE((SELECT c.asset_id FROM items c WHERE c.group_id = l.id AND c.is_cover AND c.deleted_at IS NULL LIMIT 1), l.asset_id)
+       JOIN taxonomy_terms t ON t.id = u.term_id JOIN taxonomy_facets f ON f.id = t.facet_id
+      WHERE f.key <> 'project'
+      ORDER BY l.captured_at DESC, f.sort_order, u.confidence`,
+    [config.reviewConfidenceThreshold, ownerId, limit],
+  );
+  const out = new Map<string, UnsurePost>();
+  for (const r of rows) {
+    const post = out.get(r.lead) ?? { id: r.lead, sha256: r.sha256, title: r.title, captionAi: r.captionAi, pictures: r.pictures, tags: [] };
+    post.tags.push({ termId: r.termId, label: r.label, facetLabel: r.facetLabel, confidence: r.confidence, itemIds: r.itemIds });
+    out.set(r.lead, post);
+  }
+  return [...out.values()];
 }
