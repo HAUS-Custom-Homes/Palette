@@ -26,13 +26,10 @@ next; waiting on Trevor for the failing links. Stale items in "Next steps" tidie
   link to `/save`; the sheet posts back with `from=sheet`). The sheet offers **+ New lookbook** (created on save).
   Save becomes a prominent progress card; the post opens on **Saved to Palette / Done**; a **Done** button ends the
   post's details (saves the note, back to the library). The header button is **+ New**, not + Save.
-- **Local `./data` database is damaged (open decision for Trevor).** Cause found and fixed: `src/db/client.ts` kept
-  its PGlite handle in a module variable, `next dev` reloads modules on every code edit, and each reload opened a
-  second PGlite on the same files; two writers corrupted `./data` and later `./data-test`. The handle now lives on
-  `globalThis` (proved by editing that file under a running dev server). PGlite now aborts on open for `./data`.
-  Production is unaffected (hosted Postgres). A copy is in `data/pg-damaged-2026-09-24`. Options: rebuild a fresh
-  local database (`npm run setup`, loses local-only test posts) or leave it. Agents now use `npm run dev:agents`
-  (`./data-test`), and `npm run verify` must be run with `PALETTE_DATA_DIR=./data-test` until `./data` is rebuilt.
+- **Local `./data` database was rebuilt (2026-09-24, Trevor's call).** It had been corrupted by a second PGlite opened on
+  every dev-server reload (fixed in `src/db/client.ts`, one handle on `globalThis`). The broken copies are set aside in
+  `data/pg-damaged-2026-09-24` and `data/pg-broken-set-aside-2026-09-24`; `npm run setup` made a fresh one (8 facets,
+  129 terms) and `npm run verify` passes on it again. `data/store` still holds 45 files from the old database (orphans).
 - **Inviting people:** nothing to build. Anyone @hauscustomhomes.com signs in with Google and becomes an
   editor; roles are under People. interiors@ is to sign in itself (only works if it is a real account,
   not a group or alias).
