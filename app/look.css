@@ -577,3 +577,29 @@ a.btn, .btn { display: inline-flex; align-items: center; justify-content: center
 .unsure-body { display: contents; }
 .unsure-title { margin: 0; }
 .unsure-tags { grid-column: 1 / -1; }
+
+/* ---- Vocabulary on phones (2026-10-02): proposals wrap, terms stack instead of scrolling sideways ---- */
+.vocab-what { flex: 1; min-width: 0; }
+.vocab-promote, .vocab-syn { display: flex; gap: 6px; }
+.vocab-promote .search { width: 180px; }
+.vocab-syn .search { flex: 1; min-width: 0; }
+.vocab .v-unit { display: none; }
+@media (max-width: 700px) {
+  .vocab-proposal { flex-wrap: wrap; }
+  .vocab-proposal .vocab-what { flex-basis: calc(100% - 72px); }
+  /* The form steps aside so its field takes a line of its own, then Add and No share the next. */
+  .vocab-promote { display: contents; }
+  .vocab-promote .search { width: auto; flex: 1 1 100%; min-width: 0; }
+  .vocab-promote .btn { flex: 1 1 auto; }
+  .vocab.table { display: block; overflow: visible; white-space: normal; }
+  .vocab thead { display: none; }
+  .vocab tbody { display: block; }
+  .vocab tr { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "term uses act" "syn syn syn";
+    align-items: center; gap: 8px 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .vocab td { display: block; padding: 0; border: 0; min-width: 0; }
+  .vocab .v-term { grid-area: term; font-size: 15px; }
+  .vocab .v-uses { grid-area: uses; color: var(--muted); font-variant-numeric: tabular-nums; }
+  .vocab .v-unit { display: inline; }
+  .vocab .v-act { grid-area: act; }
+  .vocab .v-syn { grid-area: syn; }
+}

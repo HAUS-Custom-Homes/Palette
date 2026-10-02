@@ -59,18 +59,18 @@ export default async function TaxonomyPage() {
           ) : (
             <div className="attention-list">
               {proposals.map((p) => (
-                <div className="attention-row" key={p.id}>
+                <div className="attention-row vocab-proposal" key={p.id}>
                   {p.sample && <img src={`/api/asset/${p.sample}/thumb`} alt="" className="thumb" />}
-                  <div style={{ flex: 1 }}>
+                  <div className="vocab-what">
                     <div><b>{p.label}</b> <span className="hint">in {p.facetLabel}</span></div>
                     <div className="hint">seen {p.occurrences} {p.occurrences === 1 ? "time" : "times"}</div>
                   </div>
                   {canEdit && (
                     <>
-                      <form action={decide} style={{ display: "flex", gap: 6 }}>
+                      <form action={decide} className="vocab-promote">
                         <input type="hidden" name="id" value={p.id} />
                         <input type="hidden" name="what" value="promote" />
-                        <input className="search" name="label" defaultValue={p.label} style={{ padding: "5px 8px", fontSize: 12, width: 180 }} />
+                        <input className="search" name="label" aria-label="Word to add" defaultValue={p.label} style={{ padding: "5px 8px", fontSize: 12 }} />
                         <button className="btn" data-primary="true" type="submit">Add to vocabulary</button>
                       </form>
                       <form action={decide}>
@@ -89,24 +89,24 @@ export default async function TaxonomyPage() {
         {[...byFacet.entries()].map(([facet, list]) => (
           <div className="panel" key={facet}>
             <h3>{facet} <span className="hint">({list.filter((t) => t.status === "active").length} active{list[0]?.isOpen ? ", open: anyone adds from an image" : ""})</span></h3>
-            <table className="table">
+            <table className="table vocab">
               <thead><tr><th>Term</th><th>Synonyms (comma-separated, make search find it)</th><th>Uses</th><th></th></tr></thead>
               <tbody>
                 {list.map((t) => (
                   <tr key={t.id} style={{ opacity: t.status === "retired" ? 0.5 : 1 }}>
-                    <td>{t.label}{t.status === "retired" && <span className="hint"> · retired</span>}</td>
-                    <td>
+                    <td className="v-term">{t.label}{t.status === "retired" && <span className="hint"> · retired</span>}</td>
+                    <td className="v-syn">
                       {canEdit ? (
-                        <form action={edit} style={{ display: "flex", gap: 6 }}>
+                        <form action={edit} className="vocab-syn">
                           <input type="hidden" name="id" value={t.id} />
                           <input type="hidden" name="what" value="synonyms" />
-                          <input className="search" name="synonyms" defaultValue={t.synonyms.join(", ")} style={{ padding: "4px 8px", fontSize: 12 }} />
+                          <input className="search" name="synonyms" aria-label={`Synonyms for ${t.label}`} defaultValue={t.synonyms.join(", ")} style={{ padding: "4px 8px", fontSize: 12 }} />
                           <button className="btn" type="submit" style={{ padding: "4px 10px" }}>Save</button>
                         </form>
                       ) : t.synonyms.join(", ")}
                     </td>
-                    <td>{t.uses}</td>
-                    <td>
+                    <td className="v-uses">{t.uses}<span className="v-unit"> {t.uses === 1 ? "use" : "uses"}</span></td>
+                    <td className="v-act">
                       {canEdit && (
                         <form action={edit}>
                           <input type="hidden" name="id" value={t.id} />
