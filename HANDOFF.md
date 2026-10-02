@@ -13,7 +13,13 @@ Lockup 2: official HAUS lockup, hairline, mark over PALETTE and EST 2026, on the
   the extension popup header. `tests/brand.test.ts`.
 - **To see:** reload the unpacked extension for its new icon; an installed home-screen app may keep its old icon
   until it is removed and added again (iOS caches it).
-- Found, not fixed: `/taxonomy` is wider than a phone screen (its add-word form and table), present before this change.
+- **Vocabulary page on phones, fixed (same day):** it was up to 197px wider than a phone (a fixed field and two
+  buttons in each proposal). Proposals now wrap (word on its own line, Add and No beneath); terms stack as rows
+  (term, uses, Retire; synonyms and Save under) instead of a sideways-scrolling table. paletteQC all ok on /taxonomy.
+- paletteQC still flags the library's first card as under 100px at 390 and 430: a flash of under 100ms before the
+  masonry grid measures itself, caught only because the QC loads ten pages at once. Not fixed.
+- Gotcha: `next build` while `npm run dev:agents` is running fails with PageNotFoundError (both write `.next`).
+  Stop the dev server and build clean.
 
 2026-09-24 session (Trevor_Office): read-only status review, no code changes. TikTok focus still
 next; waiting on Trevor for the failing links. Stale items in "Next steps" tidied.
