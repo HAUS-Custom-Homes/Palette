@@ -18,7 +18,8 @@ export const config = {
     // HausBuch talk to Palette. s/ is the client-facing share page (FR-35).
     // sw.js and offline.html must load without a session: the worker updates
     // itself in the background and the offline page is what a phone with no
-    // signal and an expired session still gets to see (FR-8).
-    "/((?!api/|s/|share|sw.js|offline.html|manifest.webmanifest|icons|_next/static|_next/image|favicon.ico).*)",
+    // signal and an expired session still gets to see (FR-8). brand/ holds the
+    // logo files the client share page shows to someone with no session.
+    "/((?!api/|s/|share|sw.js|offline.html|manifest.webmanifest|icons|brand/|_next/static|_next/image|favicon.ico).*)",
   ],
 };
