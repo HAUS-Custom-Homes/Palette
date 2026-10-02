@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ItemRow } from "@/search/query";
 import { BoardPicker } from "./board-picker";
+import { COLS_COOKIE, colsForWidth } from "./grid-cols";
 import { By, PLATFORM_NAME, PlatformMark, PlayIcon, StackIcon, clock, displayName, platformOf } from "./icons";
 
 /**
@@ -33,7 +34,7 @@ function writeTray(ids: string[]) {
   try { localStorage.setItem(TRAY_KEY, JSON.stringify(ids.slice(0, 6))); } catch { /* private mode */ }
 }
 
-export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Board[]; hauses: Haus[] }) {
+export function Grid({ items, boards, hauses, cols: startCols = 4 }: { items: ItemRow[]; boards: Board[]; hauses: Haus[]; cols?: number }) {
   const router = useRouter();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [focus, setFocus] = useState<number>(-1);
@@ -104,13 +105,16 @@ export function Grid({ items, boards, hauses }: { items: ItemRow[]; boards: Boar
   // CSS multi-column did this for free, and painted tiles black in Chrome once
   // they carried overlays and rounded clipping, which is not a trade worth having.
   const gridRef = useRef<HTMLDivElement>(null);
-  const [cols, setCols] = useState(4);
+  // The server already drew `startCols` (see grid-cols.ts); this corrects it
+  // if the window says otherwise and remembers the answer for the next visit.
+  const [cols, setCols] = useState(startCols);
   useEffect(() => {
     const el = gridRef.current;
     if (!el) return;
     const fit = () => {
-      const w = el.clientWidth;
-      setCols(w < 520 ? 2 : Math.max(2, Math.min(6, Math.floor(w / 250))));
+      const c = colsForWidth(el.clientWidth);
+      setCols(c);
+      document.cookie = `${COLS_COOKIE}=${c}; path=/; max-age=31536000; samesite=lax`;
     };
     fit();
     const ro = new ResizeObserver(fit);

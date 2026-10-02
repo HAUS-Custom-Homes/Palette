@@ -16,8 +16,10 @@ Lockup 2: official HAUS lockup, hairline, mark over PALETTE and EST 2026, on the
 - **Vocabulary page on phones, fixed (same day):** it was up to 197px wider than a phone (a fixed field and two
   buttons in each proposal). Proposals now wrap (word on its own line, Add and No beneath); terms stack as rows
   (term, uses, Retire; synonyms and Save under) instead of a sideways-scrolling table. paletteQC all ok on /taxonomy.
-- paletteQC still flags the library's first card as under 100px at 390 and 430: a flash of under 100ms before the
-  masonry grid measures itself, caught only because the QC loads ten pages at once. Not fixed.
+- **Library grid flash, fixed (same day):** the server always drew 4 masonry columns and the phone redrew 2 once
+  its script ran, so a slow phone showed four 84px slivers. Now the browser remembers its column count in the
+  `palette.cols` cookie and the server draws that; with no cookie a phone user agent gets 2 (`app/ui/grid-cols.ts`,
+  `tests/grid-cols.test.ts`). Safety net: columns wrap instead of going under 140px. paletteQC all ok on every page.
 - Gotcha: `next build` while `npm run dev:agents` is running fails with PageNotFoundError (both write `.next`).
   Stop the dev server and build clean.
 

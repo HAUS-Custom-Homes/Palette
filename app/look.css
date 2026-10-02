@@ -191,8 +191,10 @@ button.chip { font-family: var(--font); }
 }
 
 /* ---- the tile ---- */
-.grid { columns: auto; display: flex; align-items: flex-start; gap: 16px; padding: 18px 0 40px; }
-.grid-col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 16px; }
+/* Columns never go under 140px: if the server guessed too many for this screen (grid-cols.ts), they
+   wrap into rows for the moment before the script redraws them, instead of showing as slivers. */
+.grid { columns: auto; display: flex; flex-wrap: wrap; align-items: flex-start; gap: 16px; padding: 18px 0 40px; }
+.grid-col { flex: 1 1 0; min-width: min(140px, 100%); display: flex; flex-direction: column; gap: 16px; }
 @media (max-width: 700px) { .grid, .grid-col { gap: 10px; } .grid { padding: 12px 0 40px; } }
 .card { margin: 0; border: 0; border-radius: var(--radius-tile); background: var(--surface); break-inside: auto; }
 @media (max-width: 700px) { .card { border-radius: 16px; } }

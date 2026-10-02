@@ -6,6 +6,8 @@ import { config } from "@/config";
 import { redirect } from "next/navigation";
 import { createBoard, listBoards } from "@/boards/boards";
 import { Grid } from "./ui/grid";
+import { COLS_COOKIE, initialCols } from "./ui/grid-cols";
+import { cookies, headers } from "next/headers";
 import { boot } from "@/lib/boot";
 import { revalidatePath } from "next/cache";
 import { db } from "@/db/client";
@@ -76,6 +78,8 @@ async function saveSearch(formData: FormData) {
 export default async function Home({ searchParams }: { searchParams: Promise<Query> }) {
   await boot();
   const user = await requireUser();
+  const [jar, hdrs] = await Promise.all([cookies(), headers()]);
+  const cols = initialCols(jar.get(COLS_COOKIE)?.value, hdrs.get("user-agent") ?? "", hdrs.get("sec-ch-ua-mobile"));
   const sp = await searchParams;
 
   const allFacets = await facetCounts({});
@@ -280,7 +284,8 @@ export default async function Home({ searchParams }: { searchParams: Promise<Que
         ) : (
           <>
             <Grid items={items} boards={boards.filter((b) => !b.isSmart).map((b) => ({ id: b.id, name: b.name }))}
-                  hauses={counts.find((f) => f.key === "project")?.terms ?? []} />
+                  hauses={counts.find((f) => f.key === "project")?.terms ?? []}
+                  cols={cols} />
           </>
         )}
       </main>
