@@ -4,9 +4,10 @@
 }
 * { box-sizing: border-box; }
 body { margin: 0; width: 380px; background: var(--bg); color: var(--text); font: 13px/1.45 ui-sans-serif, system-ui, sans-serif; }
-header { display: flex; align-items: baseline; gap: 10px; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
-h1 { margin: 0; font: 500 19px Georgia, serif; letter-spacing: -.01em; }
-h1::after { content: "."; color: var(--accent); }
+header { display: flex; align-items: center; gap: 10px; padding: 12px 14px 10px; border-bottom: 1px solid var(--line); }
+h1 { margin: 0; display: flex; align-items: center; gap: 9px; }
+h1 .mk { height: 22px; width: auto; }
+h1 .wm { height: 10px; width: auto; }
 main { padding: 12px 14px; max-height: 480px; overflow-y: auto; }
 footer { display: flex; justify-content: space-between; gap: 8px; padding: 8px 14px; border-top: 1px solid var(--line); font-size: 12px; }
 footer a { color: var(--muted); }

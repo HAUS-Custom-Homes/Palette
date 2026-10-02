@@ -73,6 +73,9 @@ Work is done only when `tsc` is clean, `npm test` passes, and `npm run verify` p
 - URL parameters on the library page must never reuse a facet key (`color`, `space`, `style`...):
   `parse()` reads every facet key as a filter. Colour search is `?near=` for that reason.
 - **A post is a post (REF-02).** People see one card per post. Underneath, each picture or video is still its own `items` row, tied together by `items.group_id`; the lead (group_id = its own id) carries title, haus, notes and boards; **tags belong to each picture** (`memberTags()`, the post page shows the slide's own tags, 2026-09-22), `is_cover` picks the picture that stands for it. Anything that lists items to a person must list leads and look inside the group (`MEMBER`, `toPosts()` in `src/search/query.ts`). Removing a post removes its members. Never fold two items from the same post into each other as near-duplicates. **Palette keeps its own copy of video** when it can get the file (`items.video_asset_id`, same immutable content-addressed storage), and says so plainly when it cannot.
+- **The mark has one source: `src/brand/mark.ts`** (two paint strips cut to the HAUS A, chosen 2026-10-02; `docs/BRAND.md`).
+  Change it there and run `npm run icons`; never hand-edit a PNG or redraw it in a component. The HAUS half of the lockup is the
+  official file in `public/brand/`, placed untouched. Never the old `haus_wordmark` files.
 - **QC every screen change on a phone before it ships.** Start `npm run dev:agents` (it switches on what production has
   on, such as the one-tap Shortcut button), paste `tools/qc-layout.js` into the page and run `await paletteQC([360, 390, 430])`.
   Ship only on "all ok", and look at a screenshot of what changed. Text checks alone let an overlapping button ship on 2026-09-24.

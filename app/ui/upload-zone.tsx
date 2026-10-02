@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { SearchIcon } from "./icons";
+import { Mark } from "./mark";
 
 /**
  * REF-02 decision 7. Saving is one action with no questions. The answer comes
@@ -141,6 +142,7 @@ export function UploadZone({ hauses, q = "", keep = {} }: { hauses: Array<{ slug
               <img src={`/api/asset/${toast.post.sha256}/thumb`} alt="" />
               <div className="toast-body">
                 <div className="toast-line">
+                  {!toast.already && <Mark open key={toast.post.id + (toast.haus ?? "")} className="toast-mark" />}
                   <b>
                     {toast.haus ? `Added to ${toast.haus}`
                       : toast.already ? "Already in your library"

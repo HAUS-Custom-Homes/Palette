@@ -2,6 +2,7 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import type { User } from "@/lib/users";
 import { GearIcon, MenuIcons } from "./icons";
+import { Mark, Wordmark } from "./mark";
 
 /**
  * The four places people go every day stay in the bar. Everything that is
@@ -14,7 +15,7 @@ export function Nav({ user, attention = 0, at, search }: { user: User; attention
   const initials = (user.name ?? user.email).split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((w) => w[0]!.toUpperCase()).join("");
   return (
     <div className="nav">
-      <Link href="/" className="mark">Palette<b>.</b></Link>
+      <Link href="/" className="mark" aria-label="Palette, the library"><Mark variant="simple" className="themed" /><Wordmark /></Link>
       <Link href="/" data-on={at === "library"}>Library</Link>
       <Link href="/boards" data-on={at === "boards"}>Lookbooks</Link>
       <Link href="/attention" data-on={at === "attention"}>

@@ -16,6 +16,7 @@ import { ItemBoardPicker } from "./board-picker";
 import { Carousel } from "./carousel";
 import { SlidePanel } from "./slide-panel";
 import { Nav } from "../../ui/nav";
+import { Mark } from "../../ui/mark";
 import { AddTag } from "./add-tag";
 import { HausPicker } from "./haus-picker";
 import { Arriving } from "./arriving";
@@ -197,7 +198,7 @@ export default async function ItemPage({ params, searchParams }: { params: Promi
       <div className="page">
       {sp.shared ? (
         <div className="savedbar">
-          <span className="savedbar-check" aria-hidden="true">&#10003;</span>
+          <Mark open className="savedbar-mark themed" />
           <span className="savedbar-words"><b>Saved to Palette</b><span className="hint">It is in the library now.</span></span>
           <Link className="btn solid" href="/">Done</Link>
         </div>

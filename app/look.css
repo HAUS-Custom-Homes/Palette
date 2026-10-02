@@ -17,8 +17,32 @@
    narrow windows, and a scrolling box cuts off whatever pokes out of it.) */
 .nav { z-index: 50; overflow: visible !important; }
 .nav .menu { z-index: 51; }
-.nav .mark { font-family: var(--serif); font-size: 24px; font-weight: 500; letter-spacing: -.01em; color: var(--text); margin-right: 8px; }
-.nav .mark b { color: var(--accent); font-weight: 500; }
+/* The bar's mark and name scale with its font-size, which the phone rules below shrink. */
+.nav .mark { display: inline-flex; align-items: center; gap: .42em; font-size: 24px; color: var(--text); margin-right: 8px; }
+.nav .mark .pmark { height: 1.05em; width: auto; }
+.nav .mark .pword svg { display: block; height: .44em; width: auto; }
+@media (max-width: 700px) { .nav .mark .pword { display: none; } }
+
+/* ---- the mark (2026-10-02): two paint strips cut to the HAUS A, src/brand/mark.ts ---- */
+.pmark { display: block; overflow: visible; }
+/* On a light page the cream strip would vanish; it turns to ink, as on paper. */
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme="dark"]) .pmark.themed .pm-l rect:nth-child(1) { fill: #514a40; }
+  :root:not([data-theme="dark"]) .pmark.themed .pm-l rect:nth-child(2) { fill: #3a342c; }
+  :root:not([data-theme="dark"]) .pmark.themed .pm-l rect:nth-child(3) { fill: #221e19; }
+}
+/* The save: both strips start closed on the rivet and swing out into the A, brass last. */
+.pmark-open .pm-l, .pmark-open .pm-r {
+  transform-box: view-box; transform-origin: 53.6px 10.5px;
+  animation: .9s cubic-bezier(.2, .9, .25, 1) both;
+}
+.pmark-open .pm-l { animation-name: pm-open-l; animation-delay: .1s; }
+.pmark-open .pm-r { animation-name: pm-open-r; animation-delay: .22s; }
+@keyframes pm-open-l { from { transform: rotate(-23.4deg); } to { transform: rotate(0deg); } }
+@keyframes pm-open-r { from { transform: rotate(23.4deg); } to { transform: rotate(0deg); } }
+@media (prefers-reduced-motion: reduce) { .pmark-open .pm-l, .pmark-open .pm-r { animation: none; } }
+.toast-mark { flex: none; width: 26px; height: auto; }
+.savedbar-mark { flex: none; width: 34px; height: auto; }
 .nav a[data-on="true"] { color: var(--text); }
 .nav .more { position: relative; }
 .nav .more summary { list-style: none; cursor: pointer; }
@@ -504,7 +528,6 @@ a.btn, .btn { display: inline-flex; align-items: center; justify-content: center
 /* ---- right after a save: one clear line, one way out (2026-09-24) ---- */
 .savedbar { display: flex; align-items: center; gap: 12px; margin: 12px 0 14px; padding: 12px 14px; border-radius: 18px;
   background: color-mix(in srgb, var(--accent) 12%, var(--surface)); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); }
-.savedbar-check { flex: none; width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; background: var(--accent); color: var(--accent-ink); font-weight: 700; }
 .savedbar-words { flex: 1; min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
 .savedbar-words b { font-size: 15px; font-weight: 600; }
 .savedbar .btn.solid { padding: 9px 18px; }

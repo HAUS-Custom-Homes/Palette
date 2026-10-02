@@ -1,5 +1,19 @@
 # Handoff
-Last updated: 2026-09-24 on Trevor_Lenovo
+Last updated: 2026-10-02 on Trevor_Office
+
+2026-10-02 session (Trevor_Office), deployed: **Palette has a logo.** Four rounds with Trevor (board: the private
+Artifact "Palette Logo Concepts", linked in `docs/BRAND.md`) ended on two paint strips hung on one rivet, opened to
+the A of the official HAUS lockup (measured from the file: 23.4 degree legs, flat feet, heavier right leg), plus
+Lockup 2: official HAUS lockup, hairline, mark over PALETTE and EST 2026, on the HAUS file's own lines.
+- One source, `src/brand/mark.ts`; `npm run icons` rebuilds app icons, favicons 16/32/64, maskable and Apple icons,
+  extension icons, and `public/brand/` (mark SVGs, lockup SVG and PNG on black and on paper). PALETTE is outlined
+  Montserrat Medium (`src/brand/glyphs.ts`), so no font is needed.
+- In the app: mark and PALETTE in the top bar (mark alone on phones); the save toast and the "Saved to Palette" bar
+  play the mark opening; the client lookbook page shows the lockup (answers the old "HAUS as plain text" question);
+  the extension popup header. `tests/brand.test.ts`.
+- **To see:** reload the unpacked extension for its new icon; an installed home-screen app may keep its old icon
+  until it is removed and added again (iOS caches it).
+- Found, not fixed: `/taxonomy` is wider than a phone screen (its add-word form and table), present before this change.
 
 2026-09-24 session (Trevor_Office): read-only status review, no code changes. TikTok focus still
 next; waiting on Trevor for the failing links. Stale items in "Next steps" tidied.

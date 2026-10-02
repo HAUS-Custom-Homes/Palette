@@ -20,7 +20,11 @@ export default async function SharedBoardPage({ params }: { params: Promise<{ to
   return (
     <div className="client">
       <header className="client-head">
-        <div className="client-brand">HAUS</div>
+        {/* Lockup 2 (2026-10-02): the official HAUS lockup, a hairline, then Palette. */}
+        <picture className="client-brand">
+          <source srcSet="/brand/palette-lockup-paper.svg" media="(prefers-color-scheme: light)" />
+          <img src="/brand/palette-lockup-dark.svg" alt="HAUS Custom Homes · Palette" />
+        </picture>
         <h1>{board.name}</h1>
         {board.description && <p>{board.description}</p>}
         <p className="hint">Tap the ones you like. Your picks come straight back to us.</p>
